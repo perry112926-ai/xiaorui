@@ -1,0 +1,2388 @@
+{
+  "date": "2026-11-05",
+  "scope": "公开地标真实模型／高德查询；宿主能力边界；定位用公开北京坐标模拟，不是本人GPS。 资料卡回家用公开博物馆地址作虚构家庭占位，仅隔离测试，不是实际住宅。",
+  "case_count": 32,
+  "turn_count": 44,
+  "transactions": 0,
+  "api_contracts": [
+    {
+      "id": "current_weather",
+      "passed": true
+    },
+    {
+      "id": "dated_forecast",
+      "passed": true
+    },
+    {
+      "id": "real_origin",
+      "passed": true
+    },
+    {
+      "id": "nearby_药店",
+      "passed": true
+    },
+    {
+      "id": "nearby_公共厕所",
+      "passed": true
+    },
+    {
+      "id": "nearby_医院",
+      "passed": true
+    },
+    {
+      "id": "nearby_公园",
+      "passed": true
+    },
+    {
+      "id": "geocode_destination",
+      "passed": true
+    },
+    {
+      "id": "walking",
+      "passed": true
+    },
+    {
+      "id": "driving",
+      "passed": true
+    },
+    {
+      "id": "transit",
+      "passed": true
+    },
+    {
+      "id": "empty_search",
+      "passed": true
+    },
+    {
+      "id": "empty_cannot_reuse_previous_destination",
+      "passed": true
+    }
+  ],
+  "historical_failures": [
+    "初测最近地点没有距离证据；改用周边距离检索。",
+    "初测不支持明日天气；已接入有日期预报。",
+    "初测从记忆补公交线路；改用真实公交数据。",
+    "无障碍提示仍补未经证实的出口；已改宿主拒绝保证。",
+    "整点降雨被夜间天气推成概率；已改宿主明确不支持。",
+    "少步行候选排序和途经／乘坐站数已修正。",
+    "无城市天气追问发生2次150秒模型超时；首轮无位置的简单天气追问现由宿主直接澄清，外部模型稳定性仍需观察。",
+    "中文虚构地点触发合法模糊匹配，零结果测试改用纯任意字符串，验证旧目的地不被复用。"
+  ],
+  "not_verified": [
+    "真人麦克风／声学回声／方言",
+    "实际MacGPS精度及权限弹窗",
+    "户外按路线步行",
+    "地图App唤起与持续偏航导航",
+    "实时公交班次、无障碍、电梯、药品库存及挂号",
+    "所有城市和所有自然语言表达"
+  ],
+  "cases": [
+    {
+      "id": "weather_now",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "北京现在天气怎么样？我一会儿出去散步。",
+          "reply": "北京现在晴，16度，西北风4级，空气比较干。出门散步可以穿件薄外套，记得带杯水。\n\n高德报告时间：2026-11-05 16:34:02。",
+          "calls": [
+            {
+              "tool": "amap_weather",
+              "arguments": {
+                "city": "北京",
+                "forecast": false
+              },
+              "evidence": {
+                "weather": [
+                  {
+                    "city": "北京市",
+                    "weather": "晴",
+                    "temperature": "16",
+                    "winddirection": "西北",
+                    "windpower": "4",
+                    "humidity": "15",
+                    "reporttime": "2026-11-05 16:34:02"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "weather_other_city",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "我在广州，广州今天什么天气？",
+          "reply": "广州今天多云，现在27度，北风≤3级，湿度78%。天气报告时间是今天17:00。\n\n高德报告时间：2026-11-05 17:00:22。",
+          "calls": [
+            {
+              "tool": "amap_weather",
+              "arguments": {
+                "city": "广州",
+                "forecast": false
+              },
+              "evidence": {
+                "weather": [
+                  {
+                    "city": "广州市",
+                    "weather": "多云",
+                    "temperature": "27",
+                    "winddirection": "北",
+                    "windpower": "≤3",
+                    "humidity": "78",
+                    "reporttime": "2026-11-05 17:00:22"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "weather_tomorrow",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "明天北京下不下雨？我想去公园，需不需要带伞？",
+          "reply": "明天北京白天晴，晚上多云，气温3到13度，预报没雨，不用专门带雨伞。早晚有点冷，去公园记得加件外套。\n\n高德报告时间：2026-11-05 16:34:02。",
+          "calls": [
+            {
+              "tool": "amap_weather",
+              "arguments": {
+                "city": "北京",
+                "forecast": true
+              },
+              "evidence": {
+                "forecasts": [
+                  {
+                    "city": "北京市",
+                    "reporttime": "2026-11-05 16:34:02",
+                    "casts": [
+                      {
+                        "date": "2026-11-05",
+                        "week": "4",
+                        "dayweather": "晴",
+                        "nightweather": "晴",
+                        "daytemp": "16",
+                        "nighttemp": "1",
+                        "daywind": "西北",
+                        "nightwind": "西北",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      },
+                      {
+                        "date": "2026-11-06",
+                        "week": "5",
+                        "dayweather": "晴",
+                        "nightweather": "多云",
+                        "daytemp": "13",
+                        "nighttemp": "3",
+                        "daywind": "南",
+                        "nightwind": "南",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      },
+                      {
+                        "date": "2026-11-07",
+                        "week": "6",
+                        "dayweather": "小雨",
+                        "nightweather": "雨夹雪",
+                        "daytemp": "6",
+                        "nighttemp": "1",
+                        "daywind": "北",
+                        "nightwind": "北",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      },
+                      {
+                        "date": "2026-11-08",
+                        "week": "7",
+                        "dayweather": "小雨",
+                        "nightweather": "晴",
+                        "daytemp": "6",
+                        "nighttemp": "-1",
+                        "daywind": "东北",
+                        "nightwind": "东北",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      }
+                    ]
+                  }
+                ],
+                "note": "按实际预报日期回答，不代表逐小时天气、实时降雨雷达或空气质量。"
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "weather_clothes",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "帮我查北京现在天气，我出门要不要加件衣服？",
+          "reply": "北京现在晴，16℃，西北风4级，空气比较干。出门建议加件薄外套或风衣，挡风也保暖。\n\n高德报告时间：2026-11-05 16:34:02。",
+          "calls": [
+            {
+              "tool": "amap_weather",
+              "arguments": {
+                "city": "北京",
+                "forecast": false
+              },
+              "evidence": {
+                "weather": [
+                  {
+                    "city": "北京市",
+                    "weather": "晴",
+                    "temperature": "16",
+                    "winddirection": "西北",
+                    "windpower": "4",
+                    "humidity": "15",
+                    "reporttime": "2026-11-05 16:34:02"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "missing_origin",
+      "review": "supported_boundary_verified",
+      "evidence_run": "6387bd08e146491ca325a48af02884b0",
+      "turns": [
+        {
+          "prompt": "我想走路去北京协和医院，怎么走？",
+          "reply": "可以。我还没拿到您的当前位置，您现在附近有什么地标吗？比如哪个路口、商场或小区门口。",
+          "calls": [
+            {
+              "tool": "amap_current_location",
+              "arguments": {},
+              "evidence": {
+                "error": "没有当前有效定位，请点击定位授权或告诉我附近地标。"
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "missing_home",
+      "review": "supported_boundary_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "我想回家，帮我找条走路的路线。",
+          "reply": "可以。您资料卡里还没保存家庭地址，先告诉我您家在哪个城市、哪条路或小区？另外您现在在哪个地标，我一起核对路线。",
+          "calls": []
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "nearby_missing",
+      "review": "supported_boundary_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "帮我找附近能买降压药的药店。",
+          "reply": "可以。您现在在哪个地标或小区附近？我先按这个位置帮您查附近药店；降压药是否有货、是否需要处方，得问药店确认。",
+          "calls": []
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "nearby_landmark",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "我在北京西站北广场，帮我找附近的药店，腿脚不好，尽量近点。",
+          "reply": "我按“北京西站北广场”查了，最近的是：\n\n1. 北京同仁堂，直线约165米\n2. 永正智慧药房，直线约170米\n3. 同仁堂西站北广场医保药店，直线约173米\n\n您腿脚不好，我建议先看第1家。要我帮您查从北广场过去的步行路线吗？",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "北京西站北广场",
+                "city": "北京",
+                "purpose": "origin"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京西站北广场",
+                    "address": "莲花池东路118号(北京西站地铁站北出口步行190米)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "北京站北广场",
+                    "address": "北京站街与北京站西街交叉口南100米",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "北京西站北广场轻居酒店",
+                    "address": "莲花池东路102号天莲大厦",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "北京西站北广场(公交站)",
+                    "address": "北京站至八达岭长城岔西停车场站定制线路;大兴机场巴士夜间中关村线;首都机场巴士夜航线",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "北京南站北广场",
+                    "address": "永外大街12号北京南站(北京南站地铁站A西北口步行190米)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            },
+            {
+              "tool": "amap_nearby",
+              "arguments": {
+                "keyword": "药店",
+                "center_index": 1,
+                "radius": 1000
+              },
+              "evidence": {
+                "radius_meters": 1000,
+                "note": "按中心点直线距离排序，不是步行距离；不能据此保证营业、药品库存、急诊能力、无障碍或适合健康状况。请用户选择后再查实际步行路线。",
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京同仁堂",
+                    "address": "莲花池东路辅路与羊坊店路交叉口南240米",
+                    "distance_meters": "165"
+                  },
+                  {
+                    "index": 2,
+                    "name": "永正智慧药房(美里食光商场店)",
+                    "address": "羊坊店街道莲花池东路31号美里食光商场一层",
+                    "distance_meters": "170"
+                  },
+                  {
+                    "index": 3,
+                    "name": "北京同仁堂连锁药店有限责任公司西站北广场药店(医保药店)",
+                    "address": "北京城区莲花池东路31号中裕世纪大酒店一层同仁堂药店",
+                    "distance_meters": "173"
+                  },
+                  {
+                    "index": 4,
+                    "name": "顺天德中医院中药房",
+                    "address": "羊坊店路与莲花池东路辅路交叉口西北120米",
+                    "distance_meters": "199"
+                  },
+                  {
+                    "index": 5,
+                    "name": "同仁堂(西站药店)(医保药店)",
+                    "address": "羊坊店路17-3西站(北京西站地铁站北出口步行390米)",
+                    "distance_meters": "244"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "hospital",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "帮我找北京协和医院，我怕去错院区，先让我选。",
+          "reply": "查到几个容易混淆的地点，您先选一个：\n\n1. 北京协和医院东单院区：帅府园1号\n2. 东单院区门诊楼：帅府园1号\n3. 北京协和医院西单院区：大木仓胡同41号\n4. 东单院区地下停车场\n5. 东单院区急诊\n\n您要去的是第几个？",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "北京协和医院",
+                "city": "北京",
+                "purpose": "destination"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京协和医院(东单院区)",
+                    "address": "帅府园1号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "北京协和医院东单院区门诊楼",
+                    "address": "帅府园1号(灯市口地铁站C东南口步行470米)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "北京协和医院西单院区",
+                    "address": "大木仓胡同41号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "北京协和医院东单院区地下停车场",
+                    "address": "东单北大街帅府园1号北京协和医院",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "北京协和医院东单院区急诊",
+                    "address": "帅府园1号北京协和医院内(金鱼胡同地铁站B东口步行480米)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "ambiguous",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "我想去北京人民医院，先帮我核对到底是哪家。",
+          "reply": "查到“北京人民医院”通常指北京大学人民医院，主要有两个院区：\n\n1. 西直门院区：西直门南大街11号\n2. 白塔寺院区：阜成门内大街133号\n\n您要去的是第几个？",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "北京人民医院",
+                "city": "北京",
+                "purpose": "destination"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京大学人民医院(西直门院区)",
+                    "address": "西直门南大街11号(西直门地铁站D西南口步行390米)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "北京大学人民医院(白塔寺院区)",
+                    "address": "阜成门内大街133号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "北京大学人民医院西直门院区门诊",
+                    "address": "西直门南大街11号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "中国人民解放军总医院",
+                    "address": "复兴路28号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "北京中国人民解放军第三零五医院",
+                    "address": "文津街甲13号",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "toilet",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "我在北京天坛公园北门，找附近的公共厕所，别太远。",
+          "reply": "最近的是天坛公园里的公共厕所，离北门售票处直线约76米，应该就在进门附近。\n\n您要我帮您查具体步行路线吗？",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "天坛公园北门",
+                "city": "北京",
+                "purpose": "origin"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "天坛公园北门售票处",
+                    "address": "天坛东里2号天坛公园内(北侧)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "天坛公园",
+                    "address": "天坛东里甲1号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "天坛北门(公交站)",
+                    "address": "106路;110路;34路;35路;36路;6路;72路",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "天坛公园-北天门",
+                    "address": "天坛路甲1号天坛公园景区内",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "天坛北门停车场",
+                    "address": "天坛东路64号(天坛东门地铁站C东南口向南过马路龙潭路西口路南应该标注祈年大街多少号是比较合适的)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            },
+            {
+              "tool": "amap_nearby",
+              "arguments": {
+                "keyword": "公共厕所",
+                "center_index": 1,
+                "radius": 500
+              },
+              "evidence": {
+                "radius_meters": 500,
+                "note": "按中心点直线距离排序，不是步行距离；不能据此保证营业、药品库存、急诊能力、无障碍或适合健康状况。请用户选择后再查实际步行路线。",
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "天坛公园-公共厕所",
+                    "address": "天坛东路甲1号天坛公园内(北侧)",
+                    "distance_meters": "76"
+                  },
+                  {
+                    "index": 2,
+                    "name": "天坛路公共厕所",
+                    "address": "西园子二巷与龙须沟路交叉口西20米",
+                    "distance_meters": "179"
+                  },
+                  {
+                    "index": 3,
+                    "name": "公共厕所",
+                    "address": "西园子三巷15号",
+                    "distance_meters": "247"
+                  },
+                  {
+                    "index": 4,
+                    "name": "公共厕所",
+                    "address": "西园子60号",
+                    "distance_meters": "248"
+                  },
+                  {
+                    "index": 5,
+                    "name": "公共厕所",
+                    "address": "西园子39号",
+                    "distance_meters": "296"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "park",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "我在北京天坛公园北门，找附近适合休息的公园，先查地点。",
+          "reply": "我查到几个相近地点。您现在是在“天坛公园北门售票处”附近吗？确认后我再查周边适合休息的公园。",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "天坛公园北门",
+                "city": "北京",
+                "purpose": "origin"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "天坛公园北门售票处",
+                    "address": "天坛东里2号天坛公园内(北侧)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "天坛公园",
+                    "address": "天坛东里甲1号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "天坛北门(公交站)",
+                    "address": "106路;110路;34路;35路;36路;6路;72路",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "天坛公园-北天门",
+                    "address": "天坛路甲1号天坛公园景区内",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "天坛北门停车场",
+                    "address": "天坛东路64号(天坛东门地铁站C东南口向南过马路龙潭路西口路南应该标注祈年大街多少号是比较合适的)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "bus",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "从北京西站到天坛公园北门，公交地铁怎么走？我不想打车。",
+          "reply": "好的，不打车。请您核对两个点：\n\n起点选“北京西站”1号，还是“北京西站地铁站”2号？\n终点选“天坛公园北门售票处”1号，还是“天坛北门公交站”3号？",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "北京西站",
+                "city": "北京",
+                "purpose": "origin"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京西站",
+                    "address": "莲花池东路118号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "北京西站(地铁站)",
+                    "address": "7号线;9号线",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "北京西站(南进站口)",
+                    "address": "莲花池东路118号北京西站F1层",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "北京西站(北进站口)",
+                    "address": "莲花池东路118号北京西站2层",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "北京西站北广场",
+                    "address": "莲花池东路118号(北京西站地铁站北出口步行190米)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            },
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "天坛公园北门",
+                "city": "北京",
+                "purpose": "destination"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "天坛公园北门售票处",
+                    "address": "天坛东里2号天坛公园内(北侧)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "天坛公园",
+                    "address": "天坛东里甲1号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "天坛北门(公交站)",
+                    "address": "106路;110路;34路;35路;36路;6路;72路",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "天坛公园-北天门",
+                    "address": "天坛路甲1号天坛公园景区内",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "天坛北门停车场",
+                    "address": "天坛东路64号(天坛东门地铁站C东南口向南过马路龙潭路西口路南应该标注祈年大街多少号是比较合适的)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "wheelchair",
+      "review": "supported_boundary_verified",
+      "evidence_run": "77b8f098f2b942b292022eba9045b178",
+      "turns": [
+        {
+          "prompt": "北京国家博物馆到天安门东地铁站，帮我保证全程无台阶、轮椅可以走。",
+          "reply": "高德普通路线无法核实全程无台阶、轮椅通行或电梯是否开放，我不能保证，也不能推荐未经核实的具体出口。请先向目的地或车站工作人员确认无障碍通道；您需要我再查一条普通路线作参考吗？",
+          "calls": []
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "navigation",
+      "review": "supported_boundary_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "你能一直跟着我的位置，走错了提醒我转弯吗？现在开始导航。",
+          "reply": "我现在不能一直跟着您的位置、走错时实时提醒转弯。\n\n您可以用手机自带地图或高德/百度地图的“开始导航”，它们会持续定位和语音播报。路上要是看不清，我可以帮您查一段路线。",
+          "calls": []
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "emergency",
+      "review": "supported_boundary_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "我突然胸口很疼，还喘不上气，帮我找医院，我自己走过去。",
+          "reply": "先别自己走！胸口疼又喘不上气可能是急症，请立刻坐下或半躺着休息，马上拨打120，或大声请身边人帮您叫救护车。\n\n您现在把具体地址或附近地标告诉我，我可以马上帮您查最近的医院；但请不要独自步行前往。",
+          "calls": []
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "walking_flow",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "帮我查北京天坛公园北门到北京天坛东门地铁站怎么走，先查起点终点让我选。",
+          "reply": "我查到了，您先选一下：\n\n起点：\n1. 天坛公园北门售票处\n2. 天坛公园\n3. 天坛北门公交站\n4. 天坛公园北天门\n5. 天坛北门停车场\n\n终点只有一个：天坛东门地铁站（5号线）。\n\n您看起点选几号？",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "天坛公园北门",
+                "city": "北京",
+                "purpose": "origin"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "天坛公园北门售票处",
+                    "address": "天坛东里2号天坛公园内(北侧)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "天坛公园",
+                    "address": "天坛东里甲1号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "天坛北门(公交站)",
+                    "address": "106路;110路;34路;35路;36路;6路;72路",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "天坛公园-北天门",
+                    "address": "天坛路甲1号天坛公园景区内",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "天坛北门停车场",
+                    "address": "天坛东路64号(天坛东门地铁站C东南口向南过马路龙潭路西口路南应该标注祈年大街多少号是比较合适的)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            },
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "天坛东门地铁站",
+                "city": "北京",
+                "purpose": "destination"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "天坛东门(地铁站)",
+                    "address": "5号线",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "起点和终点都选本轮第一个，帮我查步行路线，告诉我距离和大约几分钟。",
+          "reply": "步行约1228米，大约16分钟。\n\n路线是：从北门售票处出来，沿天坛路、天坛东路方向走，最后到天坛东门地铁站。路上注意红绿灯，慢点儿走。",
+          "calls": [
+            {
+              "tool": "amap_route",
+              "arguments": {
+                "origin_index": 1,
+                "destination_index": 1,
+                "mode": "walking",
+                "transit_preference": "least_walking"
+              },
+              "evidence": {
+                "routes": [
+                  {
+                    "distance_meters": "1228",
+                    "duration_seconds": "982",
+                    "instructions": [
+                      "向北步行30米右转",
+                      "沿天坛路辅路向东南步行937米向右前方行走",
+                      "沿天坛路步行31米向右前方行走",
+                      "沿天坛东路辅路向南步行187米左转",
+                      "沿天坛东路向北步行43米到达目的地"
+                    ]
+                  }
+                ],
+                "note": "高德路线规划快照，不是实时逐步导航，不会叫车。"
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "我没听清，别念那么多，一次告诉我一句，不要假装我已经到了。",
+          "reply": "好的，我一句一句说。\n\n全程大约1228米，要走16分钟左右。",
+          "calls": []
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "driving_flow",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "从北京西站到中国国家博物馆，先查两个地点让我核对。",
+          "reply": "请您核对：\n\n起点：1号“北京西站”，莲花池东路118号。\n终点：1号“中国国家博物馆”，东长安街16号天安门广场东侧。\n\n这两个对吗？",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "北京西站",
+                "city": "北京",
+                "purpose": "origin"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京西站",
+                    "address": "莲花池东路118号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "北京西站(地铁站)",
+                    "address": "7号线;9号线",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "北京西站(南进站口)",
+                    "address": "莲花池东路118号北京西站F1层",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "北京西站(北进站口)",
+                    "address": "莲花池东路118号北京西站2层",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "北京西站北广场",
+                    "address": "莲花池东路118号(北京西站地铁站北出口步行190米)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            },
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "中国国家博物馆",
+                "city": "北京",
+                "purpose": "destination"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "中国国家博物馆",
+                    "address": "东长安街16号天安门广场东侧",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "国家自然博物馆",
+                    "address": "天桥南大街126号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "中国人民革命军事博物馆",
+                    "address": "复兴路9号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "国家自然博物馆售票处(天桥南大街)",
+                    "address": "天桥南大街126号国家自然博物馆内",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "国家动物博物馆",
+                    "address": "北辰西路1号院5号",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "起点和终点都选本轮第一个，只查驾车路线和耗时，不要叫车。",
+          "reply": "驾车约7.4公里，预计31分钟。主要走莲花池东路、宣武门西大街、前门西大街，再到广场东侧路附近。\n\n我没有叫车，这只是路线查询。",
+          "calls": [
+            {
+              "tool": "amap_route",
+              "arguments": {
+                "origin_index": 1,
+                "destination_index": 1,
+                "mode": "driving",
+                "transit_preference": "least_walking"
+              },
+              "evidence": {
+                "routes": [
+                  {
+                    "distance_meters": "7436",
+                    "duration_seconds": "1837",
+                    "instructions": [
+                      "向东行驶5米靠右",
+                      "向东北行驶224米右转",
+                      "沿莲花池东路辅路向东行驶321米靠左进入主路",
+                      "沿莲花池东路入口途径莲花池东路、宣武门西大街、宣武门东大街、前门西大街、前门东大街向东行驶6.3千米左转",
+                      "沿广场东侧路向北行驶293米右转",
+                      "沿新大路向东行驶31米左转",
+                      "向北行驶180米右转",
+                      "向东行驶46米左转",
+                      "向北行驶79米到达目的地"
+                    ]
+                  }
+                ],
+                "note": "高德路线规划快照，不是实时逐步导航，不会叫车。"
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "nearby_flow",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "我在北京西站北广场，先查一下我这个地标让我核对，再找附近药店。",
+          "reply": "我查到最接近的是：\n\n1. 北京西站北广场\n地址：莲花池东路118号，北京西站地铁站北出口步行约190米\n\n您看是这个位置吗？确认后我再帮您找附近药店。",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "北京西站北广场",
+                "city": "北京",
+                "purpose": "origin"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京西站北广场",
+                    "address": "莲花池东路118号(北京西站地铁站北出口步行190米)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "北京站北广场",
+                    "address": "北京站街与北京站西街交叉口南100米",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "北京西站北广场轻居酒店",
+                    "address": "莲花池东路102号天莲大厦",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "北京西站北广场(公交站)",
+                    "address": "北京站至八达岭长城岔西停车场站定制线路;大兴机场巴士夜间中关村线;首都机场巴士夜航线",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "北京南站北广场",
+                    "address": "永外大街12号北京南站(北京南站地铁站A西北口步行190米)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "中心点就选本轮第一个，查一公里以内药店，按实际直线距离给我几个选择。",
+          "reply": "以北京西站北广场为中心，1公里内按直线距离较近的有：\n\n1. 北京同仁堂，约165米\n2. 永正智慧药房（美里食光商场店），约170米\n3. 北京同仁堂西站北广场药店（医保药店），约173米\n4. 顺天德中医院中药房，约199米\n5. 同仁堂西站药店（医保药店），约244米\n\n这些是直线距离，不代表步行距离，也不能确认当前营业或药品库存。您要选哪一家？我可以继续查步行路线。",
+          "calls": [
+            {
+              "tool": "amap_nearby",
+              "arguments": {
+                "keyword": "药店",
+                "center_index": 1,
+                "radius": 1000
+              },
+              "evidence": {
+                "radius_meters": 1000,
+                "note": "按中心点直线距离排序，不是步行距离；不能据此保证营业、药品库存、急诊能力、无障碍或适合健康状况。请用户选择后再查实际步行路线。",
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京同仁堂",
+                    "address": "莲花池东路辅路与羊坊店路交叉口南240米",
+                    "distance_meters": "165"
+                  },
+                  {
+                    "index": 2,
+                    "name": "永正智慧药房(美里食光商场店)",
+                    "address": "羊坊店街道莲花池东路31号美里食光商场一层",
+                    "distance_meters": "170"
+                  },
+                  {
+                    "index": 3,
+                    "name": "北京同仁堂连锁药店有限责任公司西站北广场药店(医保药店)",
+                    "address": "北京城区莲花池东路31号中裕世纪大酒店一层同仁堂药店",
+                    "distance_meters": "173"
+                  },
+                  {
+                    "index": 4,
+                    "name": "顺天德中医院中药房",
+                    "address": "羊坊店路与莲花池东路辅路交叉口西北120米",
+                    "distance_meters": "199"
+                  },
+                  {
+                    "index": 5,
+                    "name": "同仁堂(西站药店)(医保药店)",
+                    "address": "羊坊店路17-3西站(北京西站地铁站北出口步行390米)",
+                    "distance_meters": "244"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "目的地选刚才第一个药店，查实际步行路线，不要把直线距离当走路距离。",
+          "reply": "查到步行路线了：\n\n从北京西站北广场到北京同仁堂，步行约269米，大约4分钟。\n\n走法：\n向东南走66米右转，再向西走34米左转；随后向南直行，依次走20米、17米、132米就到。\n\n这是路线规划，不是实时导航；路上请以现场人行道和信号灯为准。",
+          "calls": [
+            {
+              "tool": "amap_route",
+              "arguments": {
+                "origin_index": 1,
+                "destination_index": 1,
+                "mode": "walking",
+                "transit_preference": "least_walking"
+              },
+              "evidence": {
+                "routes": [
+                  {
+                    "distance_meters": "269",
+                    "duration_seconds": "215",
+                    "instructions": [
+                      "向东南步行66米右转",
+                      "向西步行34米左转",
+                      "向南步行20米直行",
+                      "向南步行17米直行",
+                      "向南步行132米到达目的地"
+                    ]
+                  }
+                ],
+                "note": "高德路线规划快照，不是实时逐步导航，不会叫车。"
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "bus_flow",
+      "review": "query_flow_verified",
+      "evidence_run": "0c0a07ded69d44c0b5bf4efbee504cbb",
+      "turns": [
+        {
+          "prompt": "北京西站到天坛公园北门，先查起点终点让我选。",
+          "reply": "好的，您先选起点和终点：\n\n起点：\n1. 北京西站（莲花池东路118号）\n2. 北京西站地铁站\n3. 北京西站南进站口\n4. 北京西站北进站口\n5. 北京西站北广场\n\n终点：\n1. 天坛公园北门售票处\n2. 天坛公园\n3. 天坛北门公交站\n4. 天坛公园北天门\n5. 天坛北门停车场\n\n您回复“起点几号、终点几号”就行。",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "北京西站",
+                "city": "北京",
+                "purpose": "origin"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京西站",
+                    "address": "莲花池东路118号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "北京西站(地铁站)",
+                    "address": "7号线;9号线",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "北京西站(南进站口)",
+                    "address": "莲花池东路118号北京西站F1层",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "北京西站(北进站口)",
+                    "address": "莲花池东路118号北京西站2层",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "北京西站北广场",
+                    "address": "莲花池东路118号(北京西站地铁站北出口步行190米)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            },
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "天坛公园北门",
+                "city": "北京",
+                "purpose": "destination"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "天坛公园北门售票处",
+                    "address": "天坛东里2号天坛公园内(北侧)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "天坛公园",
+                    "address": "天坛东里甲1号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "天坛北门(公交站)",
+                    "address": "106路;110路;34路;35路;36路;6路;72路",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "天坛公园-北天门",
+                    "address": "天坛路甲1号天坛公园景区内",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "天坛北门停车场",
+                    "address": "天坛东路64号(天坛东门地铁站C东南口向南过马路龙潭路西口路南应该标注祈年大街多少号是比较合适的)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "起点和终点都选本轮第一项，查公交地铁，优先少走路，告诉我换乘和走路多远。",
+          "reply": "按“少走路”优先，推荐第一条：\n\n从北京西站坐地铁7号线1站到湾子，步行约141米换乘6路公交，坐13站到天坛北门，再步行约124米到北门售票处。\n\n全程约47分钟，总步行约295米，费用约5元。需要地铁转公交一次。",
+          "calls": [
+            {
+              "tool": "amap_route",
+              "arguments": {
+                "origin_index": 1,
+                "destination_index": 1,
+                "mode": "transit",
+                "transit_preference": "least_walking"
+              },
+              "evidence": {
+                "routes": [
+                  {
+                    "distance_meters": "8689",
+                    "duration_seconds": "2842",
+                    "walking_distance_meters": "295",
+                    "cost_yuan": "5.0",
+                    "legs": [
+                      {
+                        "type": "walking",
+                        "distance_meters": "30"
+                      },
+                      {
+                        "type": "transit",
+                        "line": "地铁7号线(北京西站--环球度假区)",
+                        "departure_stop": "北京西站",
+                        "arrival_stop": "湾子",
+                        "intermediate_stops": "0",
+                        "ride_stops": 1
+                      },
+                      {
+                        "type": "walking",
+                        "distance_meters": "141"
+                      },
+                      {
+                        "type": "transit",
+                        "line": "6路(六里桥东公交场站--龙潭公园)",
+                        "departure_stop": "湾子",
+                        "arrival_stop": "天坛北门",
+                        "intermediate_stops": "12",
+                        "ride_stops": 13
+                      },
+                      {
+                        "type": "walking",
+                        "distance_meters": "124"
+                      }
+                    ]
+                  },
+                  {
+                    "distance_meters": "8666",
+                    "duration_seconds": "2232",
+                    "walking_distance_meters": "383",
+                    "cost_yuan": "5.0",
+                    "legs": [
+                      {
+                        "type": "walking",
+                        "distance_meters": "30"
+                      },
+                      {
+                        "type": "transit",
+                        "line": "地铁7号线(北京西站--环球度假区)",
+                        "departure_stop": "北京西站",
+                        "arrival_stop": "虎坊桥",
+                        "intermediate_stops": "4",
+                        "ride_stops": 5
+                      },
+                      {
+                        "type": "walking",
+                        "distance_meters": "229"
+                      },
+                      {
+                        "type": "transit",
+                        "line": "34路(虎坊桥路口东--孛罗营)",
+                        "departure_stop": "虎坊桥路口东",
+                        "arrival_stop": "天坛北门",
+                        "intermediate_stops": "3",
+                        "ride_stops": 4
+                      },
+                      {
+                        "type": "walking",
+                        "distance_meters": "124"
+                      }
+                    ]
+                  },
+                  {
+                    "distance_meters": "10919",
+                    "duration_seconds": "2581",
+                    "walking_distance_meters": "570",
+                    "cost_yuan": "6.0",
+                    "legs": [
+                      {
+                        "type": "walking",
+                        "distance_meters": "30"
+                      },
+                      {
+                        "type": "transit",
+                        "line": "地铁7号线(北京西站--环球度假区)",
+                        "departure_stop": "北京西站",
+                        "arrival_stop": "磁器口",
+                        "intermediate_stops": "7",
+                        "ride_stops": 8
+                      },
+                      {
+                        "type": "walking",
+                        "distance_meters": "350"
+                      },
+                      {
+                        "type": "transit",
+                        "line": "106路(东直门枢纽站--翠林小区)",
+                        "departure_stop": "磁器口北",
+                        "arrival_stop": "天坛北门",
+                        "intermediate_stops": "2",
+                        "ride_stops": 3
+                      },
+                      {
+                        "type": "walking",
+                        "distance_meters": "190"
+                      }
+                    ]
+                  }
+                ],
+                "note": "高德当前公交方案，默认少步行；线路、步行量与耗时以本次结果为准，不保证班次实时、电梯开放、无台阶或轮椅通行。没有返回的地铁出口不能推测。"
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "day_after",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "北京后天天气怎么样？我要带孙子去公园。",
+          "reply": "北京后天（11月7日）白天有小雨，晚上可能雨夹雪，气温1到6度，比较冷。\n\n带孙子去公园不太合适，建议改到明天，明天白天晴，3到13度；出门也记得给孩子穿厚点。\n\n高德报告时间：2026-11-05 17:03:56。",
+          "calls": [
+            {
+              "tool": "amap_weather",
+              "arguments": {
+                "city": "北京",
+                "forecast": true
+              },
+              "evidence": {
+                "forecasts": [
+                  {
+                    "city": "北京市",
+                    "reporttime": "2026-11-05 17:03:56",
+                    "casts": [
+                      {
+                        "date": "2026-11-05",
+                        "week": "4",
+                        "dayweather": "晴",
+                        "nightweather": "晴",
+                        "daytemp": "16",
+                        "nighttemp": "1",
+                        "daywind": "西北",
+                        "nightwind": "西北",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      },
+                      {
+                        "date": "2026-11-06",
+                        "week": "5",
+                        "dayweather": "晴",
+                        "nightweather": "多云",
+                        "daytemp": "13",
+                        "nighttemp": "3",
+                        "daywind": "南",
+                        "nightwind": "南",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      },
+                      {
+                        "date": "2026-11-07",
+                        "week": "6",
+                        "dayweather": "小雨",
+                        "nightweather": "雨夹雪",
+                        "daytemp": "6",
+                        "nighttemp": "1",
+                        "daywind": "北",
+                        "nightwind": "北",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      },
+                      {
+                        "date": "2026-11-08",
+                        "week": "7",
+                        "dayweather": "小雨",
+                        "nightweather": "晴",
+                        "daytemp": "6",
+                        "nighttemp": "-1",
+                        "daywind": "东北",
+                        "nightwind": "东北",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      }
+                    ]
+                  }
+                ],
+                "note": "按实际预报日期回答，不代表逐小时天气、实时降雨雷达或空气质量。"
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "hourly_rain",
+      "review": "supported_boundary_verified",
+      "evidence_run": "77b8f098f2b942b292022eba9045b178",
+      "turns": [
+        {
+          "prompt": "北京今天晚上八点整会不会下雨？你能精确到小时吗？",
+          "reply": "目前高德接入的是每日白天／夜间预报，无法精确判断某个整点是否下雨，也没有逐小时雨量、降雨雷达或概率数据。我可以查当天白天或夜间预报供您参考。",
+          "calls": []
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "long_forecast",
+      "review": "supported_boundary_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "三周以后北京会下雨吗？帮我确定一下。",
+          "reply": "我刚查了北京官方预报，目前只能看到到11月8日，共四天；三周以后的天气还查不到，也没法确定会不会下雨。\n\n您可以在临近那周再问我，我再帮您查最新预报。\n\n高德报告时间：2026-11-05 17:03:56。",
+          "calls": [
+            {
+              "tool": "amap_weather",
+              "arguments": {
+                "city": "北京",
+                "forecast": true
+              },
+              "evidence": {
+                "forecasts": [
+                  {
+                    "city": "北京市",
+                    "reporttime": "2026-11-05 17:03:56",
+                    "casts": [
+                      {
+                        "date": "2026-11-05",
+                        "week": "4",
+                        "dayweather": "晴",
+                        "nightweather": "晴",
+                        "daytemp": "16",
+                        "nighttemp": "1",
+                        "daywind": "西北",
+                        "nightwind": "西北",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      },
+                      {
+                        "date": "2026-11-06",
+                        "week": "5",
+                        "dayweather": "晴",
+                        "nightweather": "多云",
+                        "daytemp": "13",
+                        "nighttemp": "3",
+                        "daywind": "南",
+                        "nightwind": "南",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      },
+                      {
+                        "date": "2026-11-07",
+                        "week": "6",
+                        "dayweather": "小雨",
+                        "nightweather": "雨夹雪",
+                        "daytemp": "6",
+                        "nighttemp": "1",
+                        "daywind": "北",
+                        "nightwind": "北",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      },
+                      {
+                        "date": "2026-11-08",
+                        "week": "7",
+                        "dayweather": "小雨",
+                        "nightweather": "晴",
+                        "daytemp": "6",
+                        "nighttemp": "-1",
+                        "daywind": "东北",
+                        "nightwind": "东北",
+                        "daypower": "1-3",
+                        "nightpower": "1-3"
+                      }
+                    ]
+                  }
+                ],
+                "note": "按实际预报日期回答，不代表逐小时天气、实时降雨雷达或空气质量。"
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "air_quality",
+      "review": "supported_boundary_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "北京今天空气质量好吗？雾霾重不重？",
+          "reply": "我这边目前只能查到天气，暂时查不到北京的空气质量和雾霾指数，不能凭感觉跟您说。\n\n您可以打开手机自带天气或“空气质量”小程序看一下 AQI；如果您愿意，我可以先帮您查北京今天有没有风、会不会下雨。",
+          "calls": []
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "weather_missing_city",
+      "review": "supported_boundary_verified",
+      "evidence_run": "77b8f098f2b942b292022eba9045b178",
+      "turns": [
+        {
+          "prompt": "我这里现在下雨吗？",
+          "reply": "您现在在哪个城市或附近什么地标？我确认位置后再查天气。",
+          "calls": []
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "no_results",
+      "review": "supported_boundary_verified",
+      "evidence_run": "0c0a07ded69d44c0b5bf4efbee504cbb",
+      "turns": [
+        {
+          "prompt": "帮我在北京查小瑞测试不存在公园XYZ987654321，不要猜别的地方。",
+          "reply": "我查了，北京没有找到“小瑞测试不存在公园XYZ987654321”。\n\n返回的都是不相关的模糊匹配地点，我没有把它们当作结果。",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "小瑞测试不存在公园XYZ987654321",
+                "city": "北京",
+                "purpose": "destination"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "她时刻Her beauty色彩测试·形象管理",
+                    "address": "五道营胡同42号(雍和宫地铁站E西北口步行200米)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "国家建筑材料测试中心(众亿嘉园西)",
+                    "address": "管庄南街67号管庄东里1号建材院南楼",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "小荷国际少儿托管体能搏击综合培养中心",
+                    "address": "北京城区粉房琉璃街与陶然北岸北侧路交叉口南100米",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "谱尼测试",
+                    "address": "中关村环保科技示范园紫雀路55号院11号楼",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "测试楼",
+                    "address": "云南建设南门西北80米(同济南路地铁站B1东口步行360米)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "hospital_services",
+      "review": "supported_boundary_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "北京协和医院东单院区现在急诊排队多久？我能直接挂上号吗？",
+          "reply": "我这边查不到北京协和医院东单院区急诊的实时排队和挂号余量，不能替您确认能不能直接挂上。\n\n如果是胸痛、呼吸困难、意识不清等急重症，请别等排队信息，马上拨打120或请身边人陪同急诊。普通情况建议直接打北京协和医院官方电话或通过“北京协和医院”官方App/公众号查询当日急诊与挂号信息。",
+          "calls": []
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "phone_brief",
+      "review": "query_flow_verified",
+      "evidence_run": "dd5a071f2bbf49898a56765000f47f08",
+      "turns": [
+        {
+          "prompt": "用一句简短的话说说北京现在天气，别念一大段。",
+          "reply": "北京现在晴，15度，西北风5级，空气比较干。\n\n高德报告时间：2026-11-05 17:03:56。",
+          "calls": [
+            {
+              "tool": "amap_weather",
+              "arguments": {
+                "city": "北京",
+                "forecast": false
+              },
+              "evidence": {
+                "weather": [
+                  {
+                    "city": "北京市",
+                    "weather": "晴",
+                    "temperature": "15",
+                    "winddirection": "西北",
+                    "windpower": "5",
+                    "humidity": "14",
+                    "reporttime": "2026-11-05 17:03:56"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false
+    },
+    {
+      "id": "current_location_flow",
+      "review": "query_flow_verified",
+      "evidence_run": "6387bd08e146491ca325a48af02884b0",
+      "turns": [
+        {
+          "prompt": "使用本轮已授权的定位，帮我查到天坛公园北门的路线，先让我核对起点和目的地。",
+          "reply": "我先给您核对一下：\n\n起点定位在：北京市西城区广安门外街道莲花池东路108号汇融大厦附近，精度约20米。\n\n目的地候选：\n1. 天坛公园北门售票处\n2. 天坛公园\n3. 天坛北门公交站\n4. 天坛公园-北天门\n5. 天坛北门停车场\n\n您看起点对吗？目的地选第几个？",
+          "calls": [
+            {
+              "tool": "amap_current_location",
+              "arguments": {},
+              "evidence": {
+                "accuracy_meters": 20.0,
+                "note": "本轮授权定位附近，须核对实际起点，不能当作家；精度可能不足以辨别门口或道路两侧。",
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京市西城区广安门外街道莲花池东路108号汇融大厦",
+                    "address": "北京市西城区广安门外街道莲花池东路108号汇融大厦",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            },
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "天坛公园北门",
+                "city": "北京",
+                "purpose": "destination"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "天坛公园北门售票处",
+                    "address": "天坛东里2号天坛公园内(北侧)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "天坛公园",
+                    "address": "天坛东里甲1号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "天坛北门(公交站)",
+                    "address": "106路;110路;34路;35路;36路;6路;72路",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "天坛公园-北天门",
+                    "address": "天坛路甲1号天坛公园景区内",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "天坛北门停车场",
+                    "address": "天坛东路64号(天坛东门地铁站C东南口向南过马路龙潭路西口路南应该标注祈年大街多少号是比较合适的)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "起点用本轮定位候选1，目的地也选本轮1，查步行路线。",
+          "reply": "查到了，步行到天坛公园北门售票处约8.4公里，大约需要1小时52分钟。\n\n主要路线是沿广安门外大街、广安门内大街一直向东走，之后转到留学路方向。距离比较远，您要不要我再帮您查公交或驾车路线？",
+          "calls": [
+            {
+              "tool": "amap_route",
+              "arguments": {
+                "origin_index": 1,
+                "destination_index": 1,
+                "mode": "walking",
+                "transit_preference": "least_walking"
+              },
+              "evidence": {
+                "routes": [
+                  {
+                    "distance_meters": "8419",
+                    "duration_seconds": "6735",
+                    "instructions": [
+                      "向北步行58米右转",
+                      "沿莲花池东路辅路向东步行165米右转",
+                      "沿南蜂窝路辅路向南步行340米左转",
+                      "沿莲花河南街步行32米右转",
+                      "沿莲花河西巷向南步行77米向左前方行走",
+                      "沿莲花河西巷向南步行349米左转",
+                      "沿广安门外大街辅路向东步行1436米向左前方行走",
+                      "沿广安门桥步行66米左转",
+                      "沿广安门内大街辅路向东步行162米左转",
+                      "沿广安门桥步行114米左转",
+                      "沿广安门内大街辅路向东步行3718米右转",
+                      "沿留学路向南步行127米左转"
+                    ]
+                  }
+                ],
+                "note": "高德路线规划快照，不是实时逐步导航，不会叫车。"
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": true
+    },
+    {
+      "id": "current_location_nearby",
+      "review": "query_flow_verified",
+      "evidence_run": "6387bd08e146491ca325a48af02884b0",
+      "turns": [
+        {
+          "prompt": "我这轮已经授权定位，帮我查附近一公里内的公共厕所，先核对定位附近地址。",
+          "reply": "我核对到您在北京市西城区广安门外街道莲花池东路108号汇融大厦附近，定位精度约20米。\n\n请确认：这里是您要找厕所的起点吗？",
+          "calls": [
+            {
+              "tool": "amap_current_location",
+              "arguments": {},
+              "evidence": {
+                "accuracy_meters": 20.0,
+                "note": "本轮授权定位附近，须核对实际起点，不能当作家；精度可能不足以辨别门口或道路两侧。",
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京市西城区广安门外街道莲花池东路108号汇融大厦",
+                    "address": "北京市西城区广安门外街道莲花池东路108号汇融大厦",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "确认使用刚才的定位附近，查一公里内厕所，告诉我直线距离，先别导航。",
+          "reply": "一公里内查到这几处，按直线距离排序：\n\n1. 公共厕所（西站地区14号），约90米，莲花池东路112号\n2. 公共厕所（2号），约157米，南蜂窝路与会城门桥交汇处\n3. 公共厕所（北京西站），约282米，北京西站B1层\n4. 女卫生间（北京西站），约287米，北京西站B1层\n5. 男卫生间（北京西站），约293米，北京西站B1层\n\n这些是直线距离，不是步行距离；我先不导航。",
+          "calls": [
+            {
+              "tool": "amap_nearby",
+              "arguments": {
+                "keyword": "公共厕所",
+                "center_index": 1,
+                "radius": 1000
+              },
+              "evidence": {
+                "radius_meters": 1000,
+                "note": "按中心点直线距离排序，不是步行距离；不能据此保证营业、药品库存、急诊能力、无障碍或适合健康状况。请用户选择后再查实际步行路线。",
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "公共厕所(西站地区14号)",
+                    "address": "莲花池东路112号",
+                    "distance_meters": "90"
+                  },
+                  {
+                    "index": 2,
+                    "name": "公共厕所(2号)",
+                    "address": "南蜂窝路与会城门桥交汇处",
+                    "distance_meters": "157"
+                  },
+                  {
+                    "index": 3,
+                    "name": "公共厕所(北京西站)",
+                    "address": "莲花池东路118号北京西站B1层",
+                    "distance_meters": "282"
+                  },
+                  {
+                    "index": 4,
+                    "name": "女卫生间(北京西站)",
+                    "address": "莲花池东路118号北京西站B1层",
+                    "distance_meters": "287"
+                  },
+                  {
+                    "index": 5,
+                    "name": "男卫生间(北京西站)",
+                    "address": "莲花池东路118号北京西站B1层",
+                    "distance_meters": "293"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": true
+    },
+    {
+      "id": "confirmed_home_flow",
+      "review": "query_flow_verified",
+      "evidence_run": "d874fce3e94847f49783b36c460e0175",
+      "turns": [
+        {
+          "prompt": "我在北京西站。资料卡里的地址是本轮测试目的地，帮我查回家的公交路线，先核对起点和目的地。",
+          "reply": "我先核对一下：\n\n起点选“北京西站”，地址莲花池东路118号，可以吗？\n目的地是资料卡里的“中国国家博物馆”，东城区东长安街16号。\n\n您回复“可以”，我就查公交地铁路线。",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "北京西站",
+                "city": "北京",
+                "purpose": "origin"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京西站",
+                    "address": "莲花池东路118号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "北京西站(地铁站)",
+                    "address": "7号线;9号线",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "北京西站(南进站口)",
+                    "address": "莲花池东路118号北京西站F1层",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "北京西站(北进站口)",
+                    "address": "莲花池东路118号北京西站2层",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "北京西站北广场",
+                    "address": "莲花池东路118号(北京西站地铁站北出口步行190米)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            },
+            {
+              "tool": "amap_geocode",
+              "arguments": {
+                "address": "北京市东城区东长安街16号中国国家博物馆",
+                "city": "北京",
+                "purpose": "destination"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京市东城区东长安街16号中国国家博物馆",
+                    "address": "北京市东城区东长安街16号中国国家博物馆",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "起点和目的地都选本轮第1项，查公交，优先少换乘，不要叫车。",
+          "reply": "查到了，优先少换乘的话，建议坐142路公交，不用换乘：\n\n从北京西站步行约374米上车，坐142路到“前门西”，坐5站，票价2元；下车后再步行约1299米到中国国家博物馆。全程约7.8公里，预计1小时6分钟。\n\n这条下车后走得稍远。想少走路的话，也可以坐地铁9号线换1号线八通线，步行约1217米，预计45分钟。",
+          "calls": [
+            {
+              "tool": "amap_route",
+              "arguments": {
+                "origin_index": 1,
+                "destination_index": 1,
+                "mode": "transit",
+                "transit_preference": "least_transfers"
+              },
+              "evidence": {
+                "routes": [
+                  {
+                    "distance_meters": "7800",
+                    "duration_seconds": "3935",
+                    "walking_distance_meters": "1673",
+                    "cost_yuan": "2.0",
+                    "legs": [
+                      {
+                        "type": "walking",
+                        "distance_meters": "374"
+                      },
+                      {
+                        "type": "transit",
+                        "line": "142路(丽泽桥北--慧忠里)",
+                        "departure_stop": "北京西站",
+                        "arrival_stop": "前门西",
+                        "intermediate_stops": "4",
+                        "ride_stops": 5
+                      },
+                      {
+                        "type": "walking",
+                        "distance_meters": "1299"
+                      }
+                    ]
+                  },
+                  {
+                    "distance_meters": "9393",
+                    "duration_seconds": "3714",
+                    "walking_distance_meters": "2410",
+                    "cost_yuan": "4.0",
+                    "legs": [
+                      {
+                        "type": "walking",
+                        "distance_meters": "30"
+                      },
+                      {
+                        "type": "transit",
+                        "line": "地铁7号线(北京西站--环球度假区)",
+                        "departure_stop": "北京西站",
+                        "arrival_stop": "珠市口",
+                        "intermediate_stops": "5",
+                        "ride_stops": 6
+                      },
+                      {
+                        "type": "walking",
+                        "distance_meters": "2380"
+                      }
+                    ]
+                  },
+                  {
+                    "distance_meters": "9277",
+                    "duration_seconds": "2722",
+                    "walking_distance_meters": "1217",
+                    "cost_yuan": "4.0",
+                    "legs": [
+                      {
+                        "type": "walking",
+                        "distance_meters": "30"
+                      },
+                      {
+                        "type": "transit",
+                        "line": "地铁9号线(郭公庄--国家图书馆)",
+                        "departure_stop": "北京西站",
+                        "arrival_stop": "军事博物馆",
+                        "intermediate_stops": "0",
+                        "ride_stops": 1
+                      },
+                      {
+                        "type": "walking",
+                        "distance_meters": "378"
+                      },
+                      {
+                        "type": "transit",
+                        "line": "地铁1号线八通线(苹果园--环球度假区)",
+                        "departure_stop": "军事博物馆",
+                        "arrival_stop": "天安门东",
+                        "intermediate_stops": "5",
+                        "ride_stops": 6
+                      },
+                      {
+                        "type": "walking",
+                        "distance_meters": "809"
+                      }
+                    ]
+                  }
+                ],
+                "note": "高德当前公交方案，默认少步行；线路、步行量与耗时以本次结果为准，不保证班次实时、电梯开放、无台阶或轮椅通行。没有返回的地铁出口不能推测。"
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false,
+      "public_profile_fixture": true
+    },
+    {
+      "id": "change_destination_flow",
+      "review": "query_flow_verified",
+      "evidence_run": "d874fce3e94847f49783b36c460e0175",
+      "turns": [
+        {
+          "prompt": "从北京西站到国家博物馆，先查起点终点让我核对。",
+          "reply": "查到了，请您核对：\n\n起点：1. 北京西站，莲花池东路118号\n终点：1. 中国国家博物馆，东长安街16号天安门广场东侧\n\n这两个对吗？确认后我再查路线。",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "北京西站",
+                "city": "北京",
+                "purpose": "origin"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "北京西站",
+                    "address": "莲花池东路118号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "北京西站(地铁站)",
+                    "address": "7号线;9号线",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "北京西站(南进站口)",
+                    "address": "莲花池东路118号北京西站F1层",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "北京西站(北进站口)",
+                    "address": "莲花池东路118号北京西站2层",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "北京西站北广场",
+                    "address": "莲花池东路118号(北京西站地铁站北出口步行190米)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            },
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "中国国家博物馆",
+                "city": "北京",
+                "purpose": "destination"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "中国国家博物馆",
+                    "address": "东长安街16号天安门广场东侧",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "国家自然博物馆",
+                    "address": "天桥南大街126号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "中国人民革命军事博物馆",
+                    "address": "复兴路9号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "国家自然博物馆售票处(天桥南大街)",
+                    "address": "天桥南大街126号国家自然博物馆内",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "国家动物博物馆",
+                    "address": "北辰西路1号院5号",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "起点和终点都选1，查驾车路线，不要叫车。",
+          "reply": "查到了，只查路线，不会叫车。\n\n推荐驾车约7.4公里，大约40分钟。主要走莲花池东路、宣武门西大街、前门西大街，再进广场东侧路到国家博物馆。\n\n另有一条约9.7公里，约53分钟。天安门周边可能有临时交通管制，实际以现场和高德导航为准。",
+          "calls": [
+            {
+              "tool": "amap_route",
+              "arguments": {
+                "origin_index": 1,
+                "destination_index": 1,
+                "mode": "driving",
+                "transit_preference": "least_walking"
+              },
+              "evidence": {
+                "routes": [
+                  {
+                    "distance_meters": "7436",
+                    "duration_seconds": "2408",
+                    "instructions": [
+                      "向东行驶5米靠右",
+                      "向东北行驶224米右转",
+                      "沿莲花池东路辅路向东行驶321米靠左进入主路",
+                      "沿莲花池东路入口途径莲花池东路、宣武门西大街、宣武门东大街、前门西大街、前门东大街向东行驶6.3千米左转",
+                      "沿广场东侧路向北行驶293米右转",
+                      "沿新大路向东行驶31米左转",
+                      "向北行驶180米右转",
+                      "向东行驶46米左转",
+                      "向北行驶79米到达目的地"
+                    ]
+                  },
+                  {
+                    "distance_meters": "9698",
+                    "duration_seconds": "3207",
+                    "instructions": [
+                      "向东行驶5米靠右",
+                      "向东北行驶224米右转",
+                      "沿莲花池东路辅路向东行驶321米靠右沿辅路行驶",
+                      "沿莲花池东路辅路向东行驶214米右转进入主路",
+                      "沿南蜂窝路途径广莲路向西南行驶635米左转进入主路",
+                      "沿马连道北路向南行驶358米左转进入主路",
+                      "沿广安门外大街途径广安门内大街、骡马市大街、珠市口西大街、珠市口东大街向东行驶6.4千米左转",
+                      "沿前门东路途径广场东侧路向北行驶1.2千米右转",
+                      "沿新大路向东行驶31米左转",
+                      "向北行驶180米右转",
+                      "向东行驶46米左转",
+                      "向北行驶79米到达目的地"
+                    ]
+                  }
+                ],
+                "note": "高德路线规划快照，不是实时逐步导航，不会叫车。"
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "我改主意了，不去国家博物馆，改去天坛公园北门，先查新目的地。",
+          "reply": "新目的地查到几个相近地点，请您核对：\n\n1. 天坛公园北门售票处，天坛东里2号天坛公园内北侧\n2. 天坛公园，天坛东里甲1号\n3. 天坛北门公交站\n4. 天坛公园-北天门，天坛路甲1号\n5. 天坛北门停车场\n\n您要去第几个？",
+          "calls": [
+            {
+              "tool": "amap_search_places",
+              "arguments": {
+                "keyword": "天坛公园北门",
+                "city": "北京",
+                "purpose": "destination"
+              },
+              "evidence": {
+                "places": [
+                  {
+                    "index": 1,
+                    "name": "天坛公园北门售票处",
+                    "address": "天坛东里2号天坛公园内(北侧)",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 2,
+                    "name": "天坛公园",
+                    "address": "天坛东里甲1号",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 3,
+                    "name": "天坛北门(公交站)",
+                    "address": "106路;110路;34路;35路;36路;6路;72路",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 4,
+                    "name": "天坛公园-北天门",
+                    "address": "天坛路甲1号天坛公园景区内",
+                    "distance_meters": null
+                  },
+                  {
+                    "index": 5,
+                    "name": "天坛北门停车场",
+                    "address": "天坛东路64号(天坛东门地铁站C东南口向南过马路龙潭路西口路南应该标注祈年大街多少号是比较合适的)",
+                    "distance_meters": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "新目的地选本轮第1个，起点还是北京西站，重新查驾车路线。",
+          "reply": "已重新查到天坛公园北门售票处，只查路线，不会叫车。\n\n推荐路线约9.5公里，大约50分钟。主要走宣武门西大街、宣武门外大街、珠市口东大街，再经金鱼池西街、天坛路到北门。\n\n另有路线约9.3到9.6公里，约54到61分钟。实际路况和停车以高德导航为准。",
+          "calls": [
+            {
+              "tool": "amap_route",
+              "arguments": {
+                "origin_index": 1,
+                "destination_index": 1,
+                "mode": "driving",
+                "transit_preference": "least_walking"
+              },
+              "evidence": {
+                "routes": [
+                  {
+                    "distance_meters": "9636",
+                    "duration_seconds": "3632",
+                    "instructions": [
+                      "向东行驶5米靠右",
+                      "向东北行驶224米右转",
+                      "沿莲花池东路辅路向东行驶321米靠左进入主路",
+                      "沿莲花池东路入口途径莲花池东路向东行驶1.8千米向右前方行驶进入匝道",
+                      "沿天宁寺桥途径西二环向南行驶1.1千米右转",
+                      "沿广安门桥向西北行驶193米靠右",
+                      "沿广安门桥途径广安门内大街、骡马市大街、珠市口西大街、珠市口东大街向东行驶4.9千米右转",
+                      "沿金鱼池西街向南行驶480米左转",
+                      "沿天坛路向东行驶567米右转",
+                      "向南行驶31米到达目的地"
+                    ]
+                  },
+                  {
+                    "distance_meters": "9506",
+                    "duration_seconds": "2995",
+                    "instructions": [
+                      "向东行驶5米靠右",
+                      "向东北行驶224米右转",
+                      "沿莲花池东路辅路向东行驶321米靠左进入主路",
+                      "沿莲花池东路入口途径莲花池东路、宣武门西大街向东行驶4.0千米向右前方行驶进入右转专用道",
+                      "沿宣武门西大街向东行驶131米右转进入主路",
+                      "沿宣武门外大街向南行驶1.1千米左转进入主路",
+                      "沿骡马市大街途径珠市口西大街、珠市口东大街向东行驶2.7千米右转",
+                      "沿金鱼池西街向南行驶480米左转",
+                      "沿天坛路向东行驶567米右转",
+                      "向南行驶31米到达目的地"
+                    ]
+                  },
+                  {
+                    "distance_meters": "9259",
+                    "duration_seconds": "3216",
+                    "instructions": [
+                      "向东行驶5米靠右",
+                      "向东北行驶224米右转",
+                      "沿莲花池东路辅路向东行驶321米靠左进入主路",
+                      "沿莲花池东路入口途径莲花池东路、宣武门西大街、宣武门东大街、前门西大街、前门东大街向东行驶7.1千米向右前方行驶进入右转专用道",
+                      "沿前门东大街辅路向东行驶164米右转",
+                      "沿祈年大街向南行驶1.4千米到达目的地"
+                    ]
+                  }
+                ],
+                "note": "高德路线规划快照，不是实时逐步导航，不会叫车。"
+              }
+            }
+          ]
+        }
+      ],
+      "transactions": 0,
+      "public_location_fixture": false,
+      "public_profile_fixture": false
+    }
+  ]
+}

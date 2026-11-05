@@ -5,11 +5,12 @@ import hashlib
 from decimal import Decimal, InvalidOperation
 import json
 import os
+import re
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from app import read_only
-from app.amap import Amap, SCHEMAS as AMAP_SCHEMAS, configured as amap_configured
+from app.amap import Amap, SCHEMAS as AMAP_SCHEMAS, configured as amap_configured, accessibility_boundary, weather_precision_boundary
 from app.progress import tool_activity
 from pathlib import Path
 
@@ -127,7 +128,7 @@ class AgentService:
         self.actions = ActionManager(self.data_dir / 'actions.sqlite3',
                                      external_blocks=external_block if data_dir is None else None)
         self.locations = LocationStore()
-        self.amap = Amap()
+        self.amap = Amap(location_provider=self.locations.get)
         self.scenarios = {
             'didi':DidiScenario(self.actions, self.life_skills.didi, self.locations.get),
             'mcd':McdScenario(self.actions, service, self.locations.get, self.life_skills.didi),
@@ -235,7 +236,9 @@ class AgentService:
         if read_only.READ_ONLY and name not in read_only.QUERY_TOOLS:
             return {'error': read_only.MESSAGE}
         if name in AMAP_SCHEMAS:
-            return await self.amap.dispatch(session,name,arguments)
+            result=await self.amap.dispatch(session,name,arguments,owner=owner)
+            if result.get('needs_location'):events.append({'type':'location_request'})
+            return result
         if name in self.scenario_tools:
             result = await self.scenario_tools[name].dispatch(session,owner,name,arguments,events)
             if name.startswith('mcd_') and name in read_only.QUERY_TOOLS:
@@ -291,6 +294,15 @@ class AgentService:
             return {'error': '资料操作参数无效，请明确要保存或忘记的内容。'}
 
     async def _run(self, owner, session, text, events, trace):
+        if (not session.display and not self.locations.get(owner)
+                and re.fullmatch(r'(?:我)?这(?:里|边|儿)(?:现在|今天|明天|这会儿)?(?:会不会|会|在|有没有)?(?:下雨|下不下雨|下雪|天气|冷不冷|热不热)(?:怎么样|如何)?[吗呢啊呀吧？?。！!]*',text.strip())):
+            trace.append({'type':'host.weather_location_missing'})
+            return '您现在在哪个城市或附近什么地标？我确认位置后再查天气。'
+        boundary=accessibility_boundary(text) or weather_precision_boundary(text)
+        if boundary:
+            trace.append({'type':'host.amap_capability_boundary'})
+            return boundary
+        weather_reports=[]
         async def dispatch(name, arguments):
             notify(tool_activity(name))
             started = time.monotonic()
@@ -303,6 +315,10 @@ class AgentService:
             self.store.save_session(owner, session.snapshot())
             if isinstance(result, dict) and 'error' in result:
                 trace.append({'type': 'tool.error', 'name': name})
+            if name=='amap_weather' and isinstance(result,dict) and 'error' not in result:
+                for row in result.get('weather',[])+result.get('forecasts',[]):
+                    if isinstance(row,dict) and isinstance(row.get('reporttime'),str):
+                        weather_reports.append(row['reporttime'])
             notify({'type': 'progress', 'stage': 'answer', 'text': '正在整理这一步的结果，您可以继续补充'})
             return result
 
@@ -354,7 +370,10 @@ class AgentService:
             self._config(), text, result.content.strip(), events, session.display, profile=self.store.model_profile())
         trace.append({'type': 'timing', 'stage': 'speech_composition',
                       'elapsed_ms': round((time.monotonic() - started) * 1000)})
-        return result.content.strip()
+        answer=result.content.strip()
+        if weather_reports and weather_reports[-1] not in answer:
+            answer+=f'\n\n高德报告时间：{weather_reports[-1]}。'
+        return answer
 
     def _answer(self, owner, session, text, answer, events, trace, task_id, conversation_reset=False):
         spoken = session.speech_turn or speech_fallback(speech_context(text, answer, events, session.display, self.store.model_profile()))

@@ -11,6 +11,35 @@ from app.skills import SCHEMAS
 
 
 class AgentTests(unittest.IsolatedAsyncioTestCase):
+    async def test_first_deictic_weather_without_location_asks_city_without_cloud(self):
+        with patch('app.agent.build_runtime') as runtime:
+            result=await self.agent._run('a',self.agent._session('a'),'我这里现在下雨吗？',[],[])
+        runtime.assert_not_called()
+        self.assertIn('城市',result)
+
+    async def test_weather_reply_retains_official_report_time(self):
+        from types import SimpleNamespace
+        self.agent._tool=AsyncMock(return_value={'weather':[{'city':'北京','reporttime':'2026-11-05 10:00:00'}]})
+        def runtime(settings,directory,dispatch,context):
+            class Bot:
+                async def __aenter__(self):return self
+                async def __aexit__(self,*args):pass
+                async def stream(self,*args,**kwargs):
+                    await dispatch('amap_weather',{'city':'北京'})
+                    yield SimpleNamespace(type='run.completed',name=None,result=SimpleNamespace(
+                        error=None,stop_reason='completed',content='北京晴。'))
+            return Bot()
+        with patch('app.agent.build_runtime',side_effect=runtime):
+            result=await self.agent._run('a',self.agent._session('a'),'北京天气',[],[])
+        self.assertIn('高德报告时间：2026-11-05 10:00:00',result)
+
+    async def test_unverified_accessibility_is_host_boundary_not_model_guess(self):
+        with patch('app.agent.build_runtime') as runtime:
+            result=await self.agent._run('a',self.agent._session('a'),'保证轮椅全程无台阶怎么走',[],[])
+        runtime.assert_not_called()
+        self.assertIn('无法核实',result)
+        self.assertNotIn('D西南口',result)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.plans = PlanStore(Path(self.tmp.name) / 'plans.sqlite3')
