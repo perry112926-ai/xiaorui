@@ -1,0 +1,148 @@
+{
+  "date": "2026-11-05",
+  "scope": "real-api-and-isolated-read-only-host",
+  "selected_model": "deepseek-v4-1-flash-261017",
+  "thinking": "disabled",
+  "transactions_attempted": 0,
+  "hardware_voice_tested": false,
+  "notes": [
+    "One sample per model per scenario; not a statistical benchmark.",
+    "Host runs sequentially in isolated temporary storage, using current working-tree code.",
+    "No production conversations or personal data included.",
+    "Local ignored .env updated after successful host probes; credentials excluded."
+  ],
+  "direct_api": [
+    {
+      "model": "doubao-seed-2-1-pro-260915",
+      "ok": true,
+      "first_text_seconds": 3.35,
+      "total_seconds": 3.99,
+      "answer": "好呀，我陪您聊。您今天有没有吃饭呀？"
+    },
+    {
+      "model": "deepseek-v4-1-flash-261017",
+      "ok": true,
+      "first_text_seconds": 4.59,
+      "total_seconds": 4.75,
+      "answer": "好呀，小瑞陪着您呢，想聊点啥都行。"
+    }
+  ],
+  "host": [
+    {
+      "model": "doubao-seed-2-1-pro-260915",
+      "input": "我一个人在家有点闷，想找你聊会儿。",
+      "ok": true,
+      "answer": "好呀，我陪您聊会儿。今天在家都做什么啦？",
+      "speech_source": "brief",
+      "timings": [
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 4842
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 5626
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 3
+        }
+      ],
+      "events": [],
+      "total_seconds": 5.67
+    },
+    {
+      "model": "doubao-seed-2-1-pro-260915",
+      "input": "先不聊天了，请查一下北京今天的天气，用工具查询，不要猜。",
+      "ok": true,
+      "answer": "高德官方 API 显示：北京现在晴，气温14℃，北风4级，湿度16%，报告时间是今天17:39。天气干，出门记得多补水。\n\n高德报告时间：2026-11-05 17:39:37。",
+      "speech_source": "brief",
+      "timings": [
+        {
+          "type": "timing",
+          "stage": "tool",
+          "name": "amap_weather",
+          "elapsed_ms": 1570
+        },
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 12421
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 13564
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 2
+        }
+      ],
+      "events": [],
+      "total_seconds": 13.59
+    },
+    {
+      "model": "deepseek-v4-1-flash-261017",
+      "input": "我一个人在家有点闷，想找你聊会儿。",
+      "ok": true,
+      "answer": "我在呢，陪您聊会儿。一个人在家闷得慌，是常有的感觉。\n\n今天在家都做些什么了？",
+      "speech_source": "brief",
+      "timings": [
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 4756
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 5182
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 2
+        }
+      ],
+      "events": [],
+      "total_seconds": 5.2
+    },
+    {
+      "model": "deepseek-v4-1-flash-261017",
+      "input": "先不聊天了，请查一下北京今天的天气，用工具查询，不要猜。",
+      "ok": true,
+      "answer": "查到了，高德官方数据，报告时间是今天17点39分：北京现在晴，14度，北风4级，湿度16%，天比较干。\n\n傍晚风有点凉，出门记得加件外套。\n\n高德报告时间：2026-11-05 17:39:37。",
+      "speech_source": "brief",
+      "timings": [
+        {
+          "type": "timing",
+          "stage": "tool",
+          "name": "amap_weather",
+          "elapsed_ms": 2092
+        },
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 12829
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 13423
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 2
+        }
+      ],
+      "events": [],
+      "total_seconds": 13.45
+    }
+  ]
+}
