@@ -79,7 +79,7 @@ def confirmation(plan):
     else:
         labels={'product':'商品','product_name':'商品','quantity':'数量','attributes':'规格','choices':'套餐内容',
                 'fulfillment':'取餐方式','take_way':'取餐方式','store':'门店','store_name':'门店',
-                'address':'地址','store_address':'门店地址','address_detail':'门牌','tableware':'餐具','remark':'备注'}
+                'phone_tail':'收餐电话尾号','address':'地址','store_address':'门店地址','address_detail':'门牌','tableware':'餐具','remark':'备注'}
         parts=[f'{label}是{flattened(summary[key])}' for key,label in labels.items() if flattened(summary.get(key))]
         # Preserve Chinese business facts too, without repeating price and policy.
         parts += [f'{key}是{flattened(value)}' for key,value in summary.items()

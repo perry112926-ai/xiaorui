@@ -5,16 +5,19 @@ const React=require('react');
 const code=ts.transpileModule(fs.readFileSync(require.resolve('../src/main.tsx'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
 function harness(options={}){
  const slots=[];let index=0,callbacks,source;
+ const paymentNavigations=[];
+ const paymentModule={exports:{}};
+ vm.runInNewContext(ts.transpileModule(fs.readFileSync(require.resolve('../src/payment.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module:paymentModule,exports:paymentModule.exports,URL,window:{location:{assign:url=>paymentNavigations.push(url)}}});
  const spoken=[],feedback=[];const requests=[];let cancellations=0;
  const voice={phase:'listening',inCall:true,recording:false,transcript:'',speaking:false,loadingSpeech:false,speak:async text=>spoken.push(text),feedback:async text=>feedback.push(text),stopSpeech(){},cancel(){},cancelRecording(){cancellations++;voice.phase='idle';voice.recording=false;},startCall:async()=>{voice.inCall=true;voice.phase='listening';return true;},endCall(){voice.inCall=false;voice.phase='idle';}};
  const hooks={...React,useState(initial){const i=index++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return[slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value;}];},useRef(value){const i=index++;if(!(i in slots))slots[i]={current:value};return slots[i];},useEffect(effect,deps){const i=index++;const old=slots[i];if(!old||!deps||deps.some((value,n)=>value!==old[n])){slots[i]=deps;effect();}}};
  class EventSource{constructor(){source=this;}close(){}}
  const module={exports:{}};
  const fetch=async (url,requestOptions)=>{requests.push({url,options:requestOptions});if(options.request){const result=await options.request(url,requestOptions);if(result)return result;}return{ok:true,headers:{get:()=> 'application/json'},json:async()=>url==='/api/health'?{mcd_configured:true,agent_configured:true}:url==='/api/contact/state'?{events:options.replay||[],cursor:0,pending:0}:url==='/api/chat/history'?{messages:[]}:url==='/api/actions'?{actions:[]}:url==='/api/contact/calls'?{id:'call-test-1',started_at:Date.now()/1000}:url.endsWith('/end')?{id:'call-test-1',started_at:Date.now()/1000-65,duration_seconds:65}: {accepted:true}};};
- vm.runInNewContext(code,{module,exports:module.exports,require:name=>name==='react'?hooks:name==='react-dom/client'?{createRoot:()=>({render(){}})}:name==='./useVoice'?{useVoice:(onFinal,onError,onSpeechStart)=>{callbacks={onFinal,onError,onSpeechStart};return voice;}}:name==='./Companion'?{Companion(){},CompanionAvatar(){},companionMood:()=> 'idle'}:name==='./SettingsDialog'?{SettingsDialog(){},useCompanionSettings:()=>({settings:{name:'小瑞',avatar:'portrait'},updateSettings(){}})}:name==='./CallBar'?{CallBar(){},callDuration:s=>String(s)}:name==='./ProfileCard'?{ProfileCard(){}}:name==='./location'?{locate:async()=>10}:name==='./ActionCard'||name==='./ChoiceCards'?{}:name.endsWith('.css')?{}:require(name),document:{getElementById:()=>({}),addEventListener(){},removeEventListener(){}},EventSource,fetch,crypto:require('node:crypto'),setInterval:()=>1,clearInterval(){},console});
+ vm.runInNewContext(code,{module,exports:module.exports,require:name=>name==='react'?hooks:name==='react-dom/client'?{createRoot:()=>({render(){}})}:name==='./useVoice'?{useVoice:(onFinal,onError,onSpeechStart)=>{callbacks={onFinal,onError,onSpeechStart};return voice;}}:name==='./Companion'?{Companion(){},CompanionAvatar(){},companionMood:()=> 'idle'}:name==='./SettingsDialog'?{SettingsDialog(){},useCompanionSettings:()=>({settings:{name:'小瑞',avatar:'portrait'},updateSettings(){}})}:name==='./CallBar'?{CallBar(){},callDuration:s=>String(s)}:name==='./ProfileCard'?{ProfileCard(){}}:name==='./location'?{locate:async()=>10}:name==='./payment'?paymentModule.exports:name==='./ActionCard'||name==='./ChoiceCards'?{}:name.endsWith('.css')?{}:require(name),document:{getElementById:()=>({}),addEventListener(){},removeEventListener(){}},EventSource,fetch,crypto:require('node:crypto'),setInterval:()=>1,clearInterval(){},console});
  const render=()=>{index=0;return module.exports.App();};
  const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
- return{render,flush,spoken,feedback,voice,requests,get cancellations(){return cancellations;},get callbacks(){return callbacks;},emit:event=>source.onmessage({data:JSON.stringify(event)})};
+ return{render,flush,spoken,feedback,voice,requests,paymentNavigations,get cancellations(){return cancellations;},get callbacks(){return callbacks;},emit:event=>source.onmessage({data:JSON.stringify(event)})};
 }
 function all(node,predicate){if(!node||typeof node!=='object')return[];return[predicate(node)?node:null,...React.Children.toArray(node.props?.children).flatMap(child=>all(child,predicate))].filter(Boolean);}
 const reply=(id,text,events=[])=>({type:'completed',message_id:id,response:{text,speech_text:text,events}});
@@ -169,12 +172,14 @@ test('phone progress updates only the island subtitle, without a message placeho
  const h=harness();let tree=await connectPhone(h);h.emit({type:'accepted',call_id:'call-test-1',message_id:'phone-one',text:'电话说的话'});
  h.emit({type:'progress',call_id:'call-test-1',message_id:'phone-one',text:'正在查滴滴车型'});tree=h.render();
  assert.equal(all(tree,n=>n.type?.name==='CallBar')[0].props.progress,'正在查滴滴车型');assert.equal(all(tree,n=>n.type?.name==='MessageProgress').length,0);
+
  assert.equal(all(tree,n=>n.props?.className==='activity-strip').length,0);assert.equal(all(tree,n=>n.props?.className==='contact-progress').length,0);
 });
 test('batched text reply replaces collected placeholders after the last user message',async()=>{
  const h=harness();h.voice.inCall=false;h.render();await h.flush();
  h.emit({type:'accepted',message_id:'one',client_id:'one',text:'第一段'});h.emit({type:'accepted',message_id:'two',client_id:'two',text:'补充条件'});
  h.emit({...reply('one','已结合两条消息回复'),message_ids:['one','two']});const tree=h.render();assert.equal(all(tree,n=>n.type?.name==='MessageProgress').length,0);
+
  const texts=all(tree,n=>n.type==='p'&&n.props.className==='message-text').map(n=>n.props.children);assert.deepEqual(texts,['第一段','补充条件','已结合两条消息回复']);
 });
 
@@ -214,7 +219,8 @@ test('elderly user loses network then retries: preserve text and reuse the same 
  let attempt=0;const h=harness({request:async url=>{if(url==='/api/contact/messages'){attempt++;return{ok:attempt>1,headers:{get:()=> 'application/json'},json:async()=>attempt===1?{detail:'网络暂时不可用'}:{accepted:true}};}}});
  h.voice.inCall=false;h.voice.phase='idle';h.render();await h.flush();let tree=h.render();all(tree,n=>n.type==='textarea')[0].props.onChange({target:{value:'帮我找附近的店'}});tree=h.render();
  all(tree,n=>n.type==='form'&&n.props.className==='composer wechat-composer')[0].props.onSubmit({preventDefault(){}});await h.flush();tree=h.render();
- assert.equal(all(tree,n=>n.type?.name==='MessageProgress').length,0);const retry=all(tree,n=>n.type==='button'&&n.props.children==='重试发送')[0];assert.ok(retry);retry.props.onClick();await h.flush();
+ assert.equal(all(tree,n=>n.type?.name==='MessageProgress').length,0);
+const retry=all(tree,n=>n.type==='button'&&n.props.children==='重试发送')[0];assert.ok(retry);retry.props.onClick();await h.flush();
  const sent=h.requests.filter(r=>r.url==='/api/contact/messages').map(r=>JSON.parse(r.options.body));assert.equal(sent.length,2);assert.equal(sent[0].client_id,sent[1].client_id);assert.equal(sent[1].text,'帮我找附近的店');
 });
 test('elderly user cannot grant microphone permission: end the call record and keep typing available',async()=>{
@@ -237,4 +243,16 @@ test('selecting a meal card sends its exact candidate once and waits for server 
  const cards=all(tree,n=>Array.isArray(n.props?.choices));
  assert.equal(cards.find(n=>n.props.choices[0].label==='麦香鱼套餐').props.disabled,true);
  assert.equal(cards.find(n=>n.props.choices[0].label==='新的餐品').props.disabled,false);
+});
+
+
+test('voice final confirmation opens the returned payment page once and ends the call; replay never navigates',async()=>{
+ const plan={id:'paid-proposal',provider:'mcd',action:'create',status:'created',summary:{product:'测试套餐'},order:{order_id:'fixture',payment_url:'https://example.invalid/fixture-payment'}};
+ const h=harness();await connectPhone(h);
+ const event={...reply('confirmed','订单已创建，接下来到官方页面付款。',[{type:'action_plan',plan}]),call_id:'call-test-1'};
+ h.emit(event);await h.flush();h.render();
+ assert.deepEqual(h.paymentNavigations,['https://example.invalid/fixture-payment']);
+ h.emit(event);await h.flush();assert.equal(h.paymentNavigations.length,1);
+ assert.equal(h.voice.inCall,false);
+ const restored=harness({replay:[event]});restored.render();await restored.flush();restored.render();assert.deepEqual(restored.paymentNavigations,[]);
 });

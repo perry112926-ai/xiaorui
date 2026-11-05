@@ -133,3 +133,14 @@ test('elderly caller explicitly hesitates for 2.5 seconds: do not prematurely su
  assert.equal(h.sockets[0].sent.some(v=>typeof v==='string'&&v.includes('finish')),false);
  h.silence(1600);assert.equal(h.sockets[0].sent.filter(v=>typeof v==='string'&&v.includes('finish')).length,1);h.cleanup();
 });
+
+test('confirmation echoed during the assistants confirmation speech is not submitted; fresh confirmation still works',async()=>{
+ const h=harness();await h.voice.startCall();
+ const speaking=h.voice.speak('请核对套餐和总价，确定后说确认下单。');await h.flush();
+ h.loud();h.audio();await speaking;
+ h.sockets[0].receive({type:'ready'});h.sockets[0].receive({type:'partial',text:'确认下单'});h.silence(2000);
+ h.sockets[0].receive({type:'final',text:'确认下单。'});
+ assert.deepEqual(h.received,[]);assert.ok(h.errors.some(e=>e.includes('播报回声')));assert.equal(h.stopped,0);
+ h.loud();h.audio();h.sockets[1].receive({type:'ready'});h.sockets[1].receive({type:'partial',text:'确认下单'});h.silence(2000);
+ h.sockets[1].receive({type:'final',text:'确认下单。'});assert.deepEqual(h.received,['确认下单。']);h.cleanup();
+});

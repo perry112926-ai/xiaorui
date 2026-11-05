@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from app.mcd import McdService, _amount
+from app.mcd_recommendations import RecommendationArgs, RecommendedChoice, recommend, choose
 
 
 class Args(BaseModel):
@@ -94,6 +95,8 @@ class Cancel(Order):
 
 
 SCHEMAS = {
+    'mcd_recommend_meals': (RecommendationArgs, '默认点餐入口：按本次已确认地址／地标查到的门店，自动推荐最多三个有图片、套餐规则可构建且真实核价通过的单人套餐。用户明确只要单品、少量餐品时可传meal_type=single，不强推套餐。无需让老人先选门店或逐项搭配；可带预算、不喝冰饮和避开食材关键词。返回具体默认搭配和含费总额，不创建订单。'),
+    'mcd_choose_recommendation': (RecommendedChoice, '选本轮已预检套餐，直接准备完整待确认方案；不再逐项询问套餐内容或餐具，不会创建订单。'),
     'mcd_address_draft': (AddressDraft, '分步收集本次新收餐地址，不写入官方账号。每次只传用户本轮提供或核对的字段，保留已说过的信息，一次只追问一个缺项。用户换地方或换收餐人用reset=true。收齐后仍需mcd_prepare_address和独立确认。'),
     'mcd_cart': (Cart, '本轮购物车。add按当前菜单序号加入用户选择的餐品及数量和套餐选项；update按购物车行序号修改数量或套餐选项；remove按购物车行序号删除；clear清空；show查看。支持同店分次搜餐后加入；换店或换地址会清空，绝不下单。'),
     'mcd_prepare_cart': (PrepareCart, '核价整个当前购物车，含全部餐品和数量；外送必须核对餐具，预算传分。生成一个待确认方案，不执行下单。'),
@@ -178,6 +181,14 @@ class McdScenario:
             if name in {'mcd_search_pickup','mcd_delivery_addresses','mcd_delivery_stores','mcd_menu','mcd_prepare_order','mcd_prepare_cart'}:
                 self.transactions.invalidate_pending(owner)
             state = session.services.setdefault('mcd', {})
+            if name=='mcd_recommend_meals':
+                self.transactions.invalidate_pending(owner)
+                return await recommend(self,state,args)
+            if name=='mcd_choose_recommendation':
+                self.transactions.invalidate_pending(owner)
+                return await choose(self,state,owner,args.recommendation_id,events,args.choice_overrides,args.need_tableware,args.remark,args.quantity,args.budget_cents)
+            if name in {'mcd_menu','mcd_search_pickup','mcd_delivery_addresses','mcd_delivery_stores'}:
+                state.pop('recommended_meals',None)
             if name == 'mcd_address_draft':
                 draft = state.setdefault('address_draft', {})
                 values = args.model_dump(exclude_none=True, exclude={'reset'})
@@ -278,7 +289,7 @@ class McdScenario:
                     'next':f'请确认{args.city}配送地址；若本次在新地方，请核对新地址及联系方式后准备新增地址确认卡片。'}
             if name == 'mcd_delivery_stores':
                 address = _pick(state.get('addresses',[]), args.address_index)
-                state.pop('stores',None); state.pop('products',None); state.pop('selected_store',None); state.pop('cart',None)
+                state.pop('stores',None); state.pop('products',None); state.pop('selected_store',None); state.pop('cart',None); state.pop('checkout_preferences',None)
                 # Require explicit Beijing evidence rather than quietly delivering in another city.
                 if not _in_city(address,state.get('city','北京')):
                     raise ValueError('当前地址未能确认属于所选城市，请核实地址后再查询，不自动更换城市。')
@@ -291,7 +302,7 @@ class McdScenario:
             if name == 'mcd_menu':
                 store = _pick(state.get('stores',[]),args.store_index)
                 if state.get('selected_store') != store:
-                    state.pop('cart',None)
+                    state.pop('cart',None); state.pop('checkout_preferences',None)
                 state.pop('products',None); state.pop('selected_store',None)
                 if store.get('open') is False or store.get('businessStatus') is False:
                     raise ValueError('当前门店显示未营业，请选择营业中的门店或稍后再试。')
@@ -353,30 +364,38 @@ class McdScenario:
                     items.append(item)
                     all_labels.extend(labels)
                 payload={**base,'items':items}
+                known=state.get('checkout_preferences',{})
+                need_tableware=args.need_tableware if args.need_tableware is not None else known.get('needTableware')
+                remark=args.remark if 'remark' in args.model_fields_set else known.get('remark','')
                 if state['mode']=='delivery':
                     payload['addressId']=state['selected_address']['addressId']
-                    if args.need_tableware is None:
+                    if need_tableware is None:
                         return {'needs_tableware':True,'next':'请问需要餐具吗？餐具费以核价为准。'}
-                    payload['needTableware']=args.need_tableware
-                    payload['remark']=args.remark
+                    payload['needTableware']=need_tableware
+                    payload['remark']=remark
                 priced=await self._read('calculate-price',self._price_payload(payload))
                 if state['mode']=='pickup':
                     ways=priced.get('takeWayList',[])
-                    if args.take_way_index is None:
+                    saved_way=next((i+1 for i,w in enumerate(ways) if w.get('code')==known.get('takeWayCode')),None)
+                    take_way_index=args.take_way_index if args.take_way_index is not None else saved_way
+                    if take_way_index is None:
                         return {'take_ways':[dict(w,index=i+1) for i,w in enumerate(ways)], 'next':'请用户明确选择堂食或外带等实际方式。'}
-                    way=_pick(ways,args.take_way_index)
+                    way=_pick(ways,take_way_index)
                     payload['takeWayCode']=way['code']
                     way_name=' · '.join(str(way.get(k,'')) for k in ('title','subtitle')).strip(' ·')
                 else:way_name='麦乐送到家'
-                request={'payload':payload,'budget_cents':state.get('budget_cents'),'labels':{'store':store.get('storeName') or store.get('name'),
+                request={'guided_order':bool(known),'payload':payload,'budget_cents':state.get('budget_cents'),'labels':{'store':store.get('storeName') or store.get('name'),
                     'product':'；'.join(f"{line['product']['name']} × {line['quantity']}" for line in lines) if len(lines)>1 else lines[0]['product']['name'],
-                    'quantity':sum(line['quantity'] for line in lines),'choices':all_labels,'fulfillment':way_name,
+                    'quantity':sum(line['quantity'] for line in lines),'choices':all_labels,
+                    'image':lines[0]['product'].get('image'),
+                    'images':[{'name':line['product']['name'],'image':line['product'].get('image'),'quantity':line['quantity']} for line in lines],'fulfillment':way_name,
                     'address':state.get('selected_address',{}).get('address',''),
                     'address_detail':state.get('selected_address',{}).get('addressDetail',''),
-                    'tableware':('需要餐具' if args.need_tableware else '不需要餐具') if state['mode']=='delivery' else '',
-                    'remark':args.remark if state['mode']=='delivery' else ''}}
-                quote=self._quoted(request,priced)
-                plan=self.transactions.prepare(owner,provider='mcd',action='create',request=request,quote=quote)
+                    **({'phone_tail':state['selected_address']['phone_tail']} if state.get('selected_address',{}).get('phone_tail') else {}),
+                    'tableware':('需要餐具' if need_tableware else '不需要餐具') if state['mode']=='delivery' else '',
+                    'remark':remark if state['mode']=='delivery' else ''}}
+                quote=await self.quote('create',request) if known and state['mode']=='delivery' else self._quoted(request,priced)
+                plan=self.transactions.prepare(owner,provider='mcd',action='create',request=quote['request'],quote=quote)
                 events.append({'type':'action_plan','plan':plan})
                 return {'plan':plan,'order_created':False,'note':'尚未下单。需核对方案并明确确认；创建后仍需官方支付。'}
             if name == 'mcd_orders':
@@ -453,8 +472,22 @@ class McdScenario:
                         'contact':payload['contactName'] + (f"（{payload['gender']}）" if payload.get('gender') else ''), 'phone':payload['phone'],
                         'privacy':'确认后将以上信息发送并保存至麦当劳账号；不修改小瑞家庭地址，不创建餐饮订单。'}}
         if action=='create':
+            request=copy.deepcopy(request)
             payload=request['payload']
             if payload['orderType']==2:
+                if request.get('guided_order'):
+                    data=await self._read('delivery-query-addresses',{})
+                    addresses=_rows(data,('addresses','addressList','deliveryAddressList','list'))
+                    address=next((a for a in addresses if str(a.get('addressId'))==str(payload['addressId'])),None)
+                    if not address:raise ValueError('这个收餐地址已变更或删除，请重新查询地址后推荐。')
+                    display=address.get('fullAddress') or address.get('deliveryAddress') or address.get('address')
+                    if not display:raise ValueError('收餐地址信息暂时不完整，请重新核对。')
+                    request['labels']['address']=display
+                    request['labels']['address_detail']=address.get('addressDetail','')
+                    request['labels'].pop('phone_tail',None)
+                    phone=str(address.get('phone',''))
+                    if re.fullmatch(r'1(?:[0-9]{10}|[0-9]{2}\*{4}[0-9]{4})',phone):request['labels']['phone_tail']=phone[-4:]
+
                 data=await self._read('delivery-query-stores',{'addressId':payload['addressId'],'beType':2})
                 stores=_rows(data,('stores','storeList','list'))
                 selected=next((s for s in stores if s.get('storeCode')==payload['storeCode'] and s.get('beCode')==payload['beCode']),None)

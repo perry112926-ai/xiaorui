@@ -22,3 +22,11 @@ class ProductCardTests(unittest.TestCase):
     def test_store_and_vehicle_cards_remain_generic(self):
         self.assertNotIn('kind',choice_cards({'stores':[{'name':'测试店','open':False}]})[0])
         self.assertNotIn('kind',choice_cards({'vehicles':[{'productName':'快车','priceText':'20'}]})[0])
+
+    def test_preflighted_quote_is_the_same_price_for_visual_card_and_speech(self):
+        card=choice_cards({'products':[{'name':'测试套餐','recommendation_id':'id','menu_price_yuan':'30',
+                'quoted_price_yuan':'37.90','choices':['主食','配餐','饮料']}]})[0]
+        self.assertEqual(card['price_yuan'],'37.90')
+        self.assertEqual(card['price_kind'],'quote')
+        self.assertIn('本次核价 37.90',card['detail'])
+        self.assertNotIn('菜单参考价 30',card['detail'])

@@ -1,6 +1,7 @@
 import React, {useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import './style.css';
+import {officialPaymentUrl,openOfficialPayment} from './payment';
 import {ChoiceCards,ChoiceCard} from './ChoiceCards';
 import {useVoice} from './useVoice';
 import {ActionCard,ActionPlan} from './ActionCard';
@@ -48,6 +49,7 @@ export function App(){
   locating.current=job;try{return await job;}finally{locating.current=null;setLocationBusy(false);}
  }
  const [activeAction,setActiveAction]=useState('');
+ const paymentOpened=useRef(new Set<string>());
  const [activeChoices,setActiveChoices]=useState<ChoiceCard[]>();
  const [phone,setPhone]=useState<PhoneCall>();const activePhone=useRef<PhoneCall|undefined>(undefined);const startingPhone=useRef(false);const greetedPhone=useRef('');
  const {settings,updateSettings}=useCompanionSettings();const [settingsOpen,setSettingsOpen]=useState(false);
@@ -81,6 +83,7 @@ export function App(){
    if(e.type==='failed'){const message=e.text==='请先配置豆包文本模型，再开始对话。'?'小瑞还没接通对话服务，请家人帮忙完成设置。':e.text;if(!e.call_id)replacePending([{role:'assistant',text:message,speech_text:message}],e.message_ids||[e.message_id]);else if(!replay)setError(message);if(!replay&&(e.call_id?e.call_id===activePhone.current?.id&&voice.inCall:!activePhone.current&&(voice.inCall||inputMode==='voice'))&&!voice.recording&&!messageCaptureActive&&!interrupted.current&&autoplayAllowed.current)void voice.speak(message);}
    else if(!e.superseded){const d=e.response as ChatResponse;if(d.conversation_reset){setMessages([]);setStores([]);setMeals([]);setPlan(undefined);setModal(false);}displayResponse(d,!!e.call_id,e.message_ids||[e.message_id]);if(!replay&&(e.call_id?e.call_id===activePhone.current?.id&&voice.inCall:!activePhone.current&&(voice.inCall||inputMode==='voice'))&&!voice.recording&&!messageCaptureActive&&!interrupted.current&&autoplayAllowed.current&&d.speech_text)void voice.speak(d.speech_text);}
    if(e.superseded&&!e.call_id)replacePending([],e.message_ids||[e.message_id]);
+   if(!replay&&!e.superseded){const paidPlan=e.response?.events?.find((event:any)=>event.type==='action_plan'&&officialPaymentUrl(event.plan))?.plan as ActionPlan|undefined;if(paidPlan&&!paymentOpened.current.has(paidPlan.id)){paymentOpened.current.add(paidPlan.id);void (async()=>{if(activePhone.current)await hangup();openOfficialPayment(paidPlan);})();}}
    if(!replay)void api<{actions:ActionPlan[]}>('/api/actions').then(d=>d.actions.forEach(updateAction)).catch(()=>{});
   }
   setChatPending(pendingIds.current.size);

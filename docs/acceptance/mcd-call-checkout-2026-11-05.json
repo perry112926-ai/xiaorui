@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-05",
+  "scope": "McDonald delivery recommendation through final confirmation",
+  "passed_to_confirmation": true,
+  "real_model_and_official_api": true,
+  "test_model": "doubao-seed-2-1-pro-260915",
+  "model_override_scope": "isolated experiment process",
+  "voice": {
+    "synthetic_tts_to_real_asr": true,
+    "production_contact_call_routes": true,
+    "turns": 2,
+    "image_recommendations": 3,
+    "physical_microphone_verified": false
+  },
+  "text": {
+    "production_contact_message_routes": true,
+    "turns": 2,
+    "image_recommendations": 3,
+    "official_address_refreshed": true,
+    "phone_tail_in_confirmation": true
+  },
+  "quote_snapshot_cents": 5380,
+  "business_writes": false,
+  "real_order_created": false,
+  "official_payment_page_verified": false,
+  "payment_navigation_automated_test": true,
+  "limitations": [
+    "Physical Chrome microphone test pending: Mac locked",
+    "Real official payment page requires final authorization of a concrete current proposal",
+    "Prices and availability are snapshots; no guarantee of later stock"
+  ],
+  "private_records": "Ignored local directory; no addresses, phones, identifiers, tokens or payment links published"
+}

@@ -30,3 +30,8 @@ test('click preserves the server supplied selection prompt and never invents an 
  const grid=element.props.children[1];const button=grid.props.children[0];button.props.onClick();
  assert.deepEqual(chosen,['选择第7个商品']);
 });
+test('preflighted single meal displays its actual total and ready default contents',()=>{
+ const html=render([{...food,price_kind:'quote',price_yuan:'37.90',contents:['主食','中薯条','热美式']}]);
+ assert.match(html,/37\.90/);assert.match(html,/本次已核价/);assert.match(html,/主食 · 中薯条 · 热美式/);
+ assert.match(html,/付款前会最后核对/);assert.doesNotMatch(html,/菜单参考价/);
+});

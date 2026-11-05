@@ -7,7 +7,7 @@ const compiled=ts.transpileModule(fs.readFileSync(require.resolve('../src/Action
  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,esModuleInterop:true}
 }).outputText;
 const moduleObject={exports:{}};
-vm.runInNewContext(compiled,{module:moduleObject,exports:moduleObject.exports,require,console,setInterval,clearInterval});
+vm.runInNewContext(compiled,{module:moduleObject,exports:moduleObject.exports,require:name=>name==='./payment'?{openOfficialPayment:()=>false}:require(name),console,setInterval,clearInterval});
 const {ActionCard}=moduleObject.exports;
 function card(overrides={}){
  const plan={id:'ours',provider:'mcd',action:'create',status:'created',summary:{address:'测试大楼',product:'麦香鱼 × 1；薯条 × 1'},

@@ -1,6 +1,8 @@
 """Human-readable progress from actual host operations, never model guesses."""
 
 TOOL_ACTIVITY = {
+    'mcd_recommend_meals':'正在为您核对几份单人套餐的图片、搭配和总价',
+    'mcd_choose_recommendation':'正在准备这份套餐的最终确认，尚未下单',
     'amap_current_location':'正在用高德核对本轮授权定位附近的地址',
     'amap_nearby':'正在按所在地点查询周边位置与直线距离',
     'amap_search_places':'正在用高德查询地点',

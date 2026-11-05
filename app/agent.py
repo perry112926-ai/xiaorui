@@ -27,6 +27,7 @@ from app.life_services import connection_status
 from app.actions import ActionManager, ActionError
 from app.didi_scenario import DidiScenario
 from app.mcd_scenario import McdScenario
+from app.mcd_recommendations import resolve_selection
 from app.location import LocationStore
 from app.luckin_scenario import LuckinScenario
 from app.contact_events import notify, contact_media, contact_call, contact_reply_mode
@@ -69,16 +70,20 @@ def choice_cards(result):
             if key=='products' and item.get('menu_price_yuan'):
                 detail=f'菜单参考价 {item["menu_price_yuan"]} 元，尚需核价'
             product_fields = {}
-            if key=='products' and 'menu_price_yuan' in item:
+            if key=='products' and ('menu_price_yuan' in item or 'quoted_price_yuan' in item):
                 product_fields = {'kind':'product', 'price_kind':'menu'}
                 try:
-                    price = Decimal(str(item['menu_price_yuan']))
+                    price = Decimal(str(item.get('quoted_price_yuan',item.get('menu_price_yuan'))))
                     if price.is_finite() and 0 <= price <= 100000 and price == price.quantize(Decimal('0.01')):
                         product_fields['price_yuan'] = f'{price:.2f}'
                 except (InvalidOperation, ValueError, TypeError):
                     pass
+            if item.get('recommendation_id'):
+                product_fields.update(recommendation_id=item['recommendation_id'],price_kind='quote',contents=item.get('choices',[]),fee_breakdown=item.get('fee_breakdown',''))
+                if 'price_yuan' in product_fields:
+                    detail=f'本次核价 {product_fields["price_yuan"]} 元；搭配：'+ '、'.join(item.get('choices',[]))
             cards.append({**product_fields,'label':str(name),'detail':detail,'image':item.get('image'),
-                'prompt':f'选择第{number}个{label}：{name}。请继续给我核对，先不要执行交易。'})
+                'prompt':f'选择第{number}份推荐{"餐品" if item.get("meal_type")=="single" else "套餐"}：{name}。' if item.get('recommendation_id') else f'选择第{number}个{label}：{name}。请继续给我核对，先不要执行交易。'})
         return cards
     return []
 
@@ -250,7 +255,7 @@ class AgentService:
                                'success': isinstance(result, dict) and 'error' not in result,
                                'source': 'https://open.mcd.cn/mcp', 'data': model_safe(result)})
             cards=choice_cards(result)
-            if cards:
+            if cards or result.get('preflighted'):
                 events.append({'type':'service_choices','choices':cards})
             return model_safe(result)
         if name in SERVICE_SCHEMAS:
@@ -375,6 +380,8 @@ class AgentService:
                       'elapsed_ms': round((time.monotonic() - started) * 1000)})
         if result is not None and result.error and 'SetLimitExceeded' in str(result.error):
             raise AgentError('豆包模型已达到账号用量上限，服务暂时暂停。请家人在火山方舟控制台核对额度后再试；已接收的消息不会自动重试。', 503)
+        if result is not None and result.error and 'ModelNotOpen' in str(result.error):
+            raise AgentError('当前配置的文本模型尚未开通，请家人在设置中选择已开通的模型或到服务平台开通；本次没有下单。',503)
         if result is None or result.error or result.stop_reason != 'completed':
             raise AgentError('小瑞本次任务尚未完成，请查看已有结果后重试。')
         if not isinstance(result.content, str) or not result.content.strip():
@@ -395,6 +402,9 @@ class AgentService:
         return answer
 
     def _answer(self, owner, session, text, answer, events, trace, task_id, conversation_reset=False):
+        ready=[e for e in events if e.get('type')=='service_choices' and any(c.get('recommendation_id') for c in e.get('choices',[]))]
+        if ready:
+            events=[e for e in events if e.get('type')!='service_choices' or e is ready[-1]]
         spoken = session.speech_turn or speech_fallback(speech_context(text, answer, events, session.display, self.store.model_profile()))
         if any(event.get('type') in {'plan','action_plan'} for event in events):
             spoken = speech_fallback(speech_context(text, answer, events, session.display, self.store.model_profile()))
@@ -476,6 +486,11 @@ class AgentService:
                             except ActionError as exc:
                                 answer = exc.message
                         trace.append({'type':'host.confirmation'})
+                    elif not read_only.READ_ONLY and (recommendation_id:=resolve_selection(session,text)):
+                        result=await self.scenarios['mcd'].dispatch(session,owner,'mcd_choose_recommendation',{'recommendation_id':recommendation_id},events)
+                        if 'products' in result:events.append({'type':'service_choices','choices':choice_cards(result)})
+                        answer=self.proposal_text(result['plan']) if result.get('plan') else result.get('error') or result.get('note','请重新查询套餐。')
+                        trace.append({'type':'host.meal_selection'})
                     elif phrase in {'先不下单','先不叫车','取消方案','先不取消','算了','不点了','先不点了','先不新增地址'} and (pending_action or phrase in {'不点了','先不点了'}):
                         if pending_action:
                             current = self.actions.cancel_local(owner,pending_action['id'])
@@ -519,7 +534,7 @@ class AgentService:
     @staticmethod
     def proposal_text(plan):
         labels={'city':'城市','contact':'联系人','phone':'联系电话','privacy':'信息用途','store':'门店','product':'商品','quantity':'数量','fulfillment':'取餐方式',
-                'address':'地址','address_detail':'门牌','choices':'套餐内容','attributes':'规格',
+                'phone_tail':'收餐电话尾号','address':'地址','address_detail':'门牌','choices':'套餐内容','attributes':'规格',
                 'tableware':'餐具','remark':'给商家的备注','fee_breakdown':'其中'}
         parts=[]
         for key,value in plan['summary'].items():
