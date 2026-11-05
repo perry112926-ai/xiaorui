@@ -117,7 +117,7 @@ class ActionManager:
             db.execute('BEGIN IMMEDIATE')
             for row in db.execute('SELECT body FROM actions WHERE owner=?', (owner,)).fetchall():
                 plan = json.loads(row['body'])
-                if plan['status'] in self.REVIEW:
+                if plan['status'] in self.REVIEW or (plan['status']=='expired' and plan['provider']=='mcd' and plan['action']=='create'):
                     plan.update(status=status, confirmation_token=secrets.token_urlsafe(32))
                     self._write(db, owner, plan)
 
@@ -142,7 +142,7 @@ class ActionManager:
             if any(p['provider'] == provider and p['status'] in self.BUSY for p in previous):
                 raise ActionError('上一笔操作结果待核查或正在执行，不能重复提交。')
             for p in previous:
-                if p['status'] in self.REVIEW:
+                if p['status'] in self.REVIEW or (p['status']=='expired' and p['provider']=='mcd' and p['action']=='create'):
                     p.update(status='superseded', confirmation_token=secrets.token_urlsafe(32))
                     self._write(db, owner, p)
             plan = {'id':secrets.token_urlsafe(24),'provider':provider,'action':action,
@@ -190,11 +190,12 @@ class ActionManager:
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             p = self._read(db, owner, id)
-            if p['status'] not in self.REVIEW:
+            if p['status'] not in self.REVIEW and not (p['status']=='expired' and p['provider']=='mcd' and p['action']=='create'):
                 return self.public(p)
             if type(version) is not int or version != p['version'] or not secrets.compare_digest(str(token), p['confirmation_token']) or text != self.phrase(p):
                 raise ActionError('需要确认当前具体方案，请重新核对。')
-            if p['expires_at'] <= time.time():
+            expired_quote=p['expires_at'] <= time.time()
+            if expired_quote and not (p['provider']=='mcd' and p['action']=='create'):
                 p.update(status='expired', error='报价过期，请重新查询。')
                 self._write(db, owner, p)
                 return self.public(p)
@@ -215,11 +216,11 @@ class ActionManager:
             if isinstance(exc, asyncio.CancelledError):
                 raise
             return self.public(self.get(owner,id))
-        if quote['comparison'] != p['comparison'] or quote['amount_cents'] != p['amount_cents']:
+        if expired_quote or quote['comparison'] != p['comparison'] or quote['amount_cents'] != p['amount_cents']:
             return self.public(self._update(owner,id,status='needs_review',summary=quote['summary'],
                 amount_cents=quote['amount_cents'],comparison=quote['comparison'],request=quote['request'],
                 version=p['version']+1,confirmation_token=secrets.token_urlsafe(32),expires_at=time.time()+300,
-                error='费用、规格或接送点有变化，请核对后再次确认。'))
+                error='报价已重新核对，请确认当前内容和总额。' if expired_quote else '费用、规格或接送点有变化，请核对后再次确认。'))
         # Invalidating the token and persisting before the first remote write is
         # essential: timeout/crash cannot turn a later confirmation into a retry.
         self._update(owner,id,status='submitting',request=quote['request'],confirmation_token=secrets.token_urlsafe(32))

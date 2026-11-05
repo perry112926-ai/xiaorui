@@ -36,3 +36,10 @@ test('pending meal does not offer cancellation of a real order',()=>{
 test('Luckin is described as a drink plan rather than a general meal service',()=>{
  const html=card({provider:'luckin'});assert.match(html,/饮品方案/);assert.doesNotMatch(html,/点餐方案|查看取消条件/);
 });
+
+test('expired McDonald proposal offers repricing instead of a disabled checkout dead end',()=>{
+ const html=card({status:'awaiting_confirmation',expires_at:0,order:undefined});
+ assert.match(html,/重新核价 · 不下单/);
+ assert.doesNotMatch(html,/<button disabled="">重新核价/);
+ assert.doesNotMatch(html,/去付款/);
+});

@@ -34,7 +34,8 @@ function progressKey(p:ActionPlan){
 export function ActionCard({plan,active,speak,onChange,onPrepared}:{plan:ActionPlan;active:boolean;speak:(s:string)=>void;onChange:(p:ActionPlan)=>void;onPrepared?:(p:ActionPlan)=>void}){
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const previous=useRef(progressKey(plan));
- const review=['awaiting_confirmation','needs_review'].includes(plan.status);
+ const renewable=plan.provider==='mcd'&&plan.action==='create';
+ const review=['awaiting_confirmation','needs_review'].includes(plan.status)||(renewable&&plan.status==='expired');
  const expired=plan.expires_at*1000<=Date.now();
  async function act(suffix:string,body:unknown={},announce=true){
   if(busy)return;setBusy(true);setError('');try{const result=await request(plan.id,suffix,body);if(suffix==='prepare-cancel')onPrepared?.(result.plan);else onChange(result.plan);
@@ -67,7 +68,7 @@ export function ActionCard({plan,active,speak,onChange,onPrepared}:{plan:ActionP
   {plan.provider==='didi'&&plan.action==='create'&&review&&<p className="note">确认后会真实叫车，关联账号可能免密扣款。请核对实际接送点，最终车费以平台为准。</p>}
   {plan.error&&<p className="note">{plan.error}</p>}
   {review&&!plan.execution_enabled&&<p className="note">家人尚未开启这项真实订单执行。</p>}
-  {review&&active&&<div className="card-actions"><button className="primary" disabled={busy||expired||!plan.execution_enabled} onClick={()=>void act('confirm',{version:plan.version,confirmation_token:plan.confirmation_token,confirmation_text:plan.confirmation_text})}>{plan.confirmation_text}{plan.provider==='mcd'&&plan.action==='create'?' · 去付款':''}</button><button disabled={busy} onClick={()=>void act('cancel-plan')}>取消这个方案</button></div>}
+  {review&&active&&<div className="card-actions"><button className="primary" disabled={busy||(expired&&!renewable)||!plan.execution_enabled} onClick={()=>void act('confirm',{version:plan.version,confirmation_token:plan.confirmation_token,confirmation_text:plan.confirmation_text})}>{expired&&renewable?'重新核价 · 不下单':`${plan.confirmation_text}${renewable?' · 去付款':''}`}</button><button disabled={busy} onClick={()=>void act('cancel-plan')}>取消这个方案</button></div>}
   {review&&active&&<p className="note">也可以直接说：“{plan.confirmation_text}”。</p>}
   {plan.status==='address_created'&&<p role="status">地址已保存至麦当劳。请继续查询配送地址，选择新地址查店点餐；尚未下单。</p>}
   {plan.status==='unknown'&&<p className="note">请先到官方渠道核查，这笔请求不会自动重复提交。</p>}

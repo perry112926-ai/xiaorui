@@ -106,3 +106,28 @@ class ActionTests(unittest.IsolatedAsyncioTestCase):
         result=await self.confirm()
         self.assertNotIn('unit-secret',str(result))
         self.assertEqual(self.manager.get('owner',self.plan['id'])['provider_response']['private'],'unit-secret')
+
+    async def test_expired_mcd_quote_can_renew_without_creating_or_reselecting(self):
+        self.manager.register('mcd',self.adapter)
+        p=self.manager.prepare('owner','mcd','create',{'trace':'old'},quote(trace='old'))
+        self.manager._update('owner',p['id'],expires_at=0)
+        renewed=await self.manager.confirm('owner',p['id'],p['version'],p['confirmation_token'],'确认下单')
+        self.assertEqual(renewed['status'],'needs_review')
+        self.assertEqual(renewed['amount_cents'],1000)
+        self.assertGreater(renewed['version'],p['version'])
+        self.adapter.execute.assert_not_awaited()
+        with self.assertRaises(ActionError):
+            await self.manager.confirm('owner',p['id'],p['version'],p['confirmation_token'],'确认下单')
+        done=await self.manager.confirm('owner',p['id'],renewed['version'],renewed['confirmation_token'],'确认下单')
+        self.assertEqual(done['status'],'created')
+        self.adapter.execute.assert_awaited_once()
+
+    async def test_expired_mcd_quote_cannot_revive_after_new_context(self):
+        self.manager.register('mcd',self.adapter)
+        p=self.manager.prepare('owner','mcd','create',{'trace':'old'},quote(trace='old'))
+        self.manager._update('owner',p['id'],status='expired',expires_at=0)
+        self.manager.invalidate_pending('owner')
+        result=await self.manager.confirm('owner',p['id'],p['version'],p['confirmation_token'],'确认下单')
+        self.assertEqual(result['status'],'superseded')
+        self.adapter.quote.assert_not_awaited()
+        self.adapter.execute.assert_not_awaited()

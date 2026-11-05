@@ -20,14 +20,27 @@
     "phone_tail_in_confirmation": true
   },
   "quote_snapshot_cents": 5380,
-  "business_writes": false,
-  "real_order_created": false,
-  "official_payment_page_verified": false,
+  "business_writes": true,
+  "real_order_created": true,
+  "official_payment_page_verified": true,
   "payment_navigation_automated_test": true,
   "limitations": [
-    "Physical Chrome microphone test pending: Mac locked",
-    "Real official payment page requires final authorization of a concrete current proposal",
+    "Physical microphone recognized a non-order utterance; complete physical voice ordering not yet verified",
+    "Desktop official page requires McDonald app or WeChat scanning; no agent payment performed",
     "Prices and availability are snapshots; no guarantee of later stock"
   ],
-  "private_records": "Ignored local directory; no addresses, phones, identifiers, tokens or payment links published"
+  "private_records": "Ignored local directory; no addresses, phones, identifiers, tokens or payment links published",
+  "native_chrome": {
+    "microphone_call_connected": true,
+    "physical_audio_recognition_observed": true,
+    "physical_voice_order_complete": false,
+    "text_pickup_and_delivery_cards_to_confirmation": true,
+    "delivery_snapshot_cents": 5380,
+    "test_call_ended": true,
+    "expired_quote_renewed_version": 2,
+    "official_scan_to_pay_visible": true,
+    "payment_page_requires": "McDonald app or WeChat scan on desktop"
+  },
+  "payment_executed_by_agent": false,
+  "official_order_status": "待支付"
 }
