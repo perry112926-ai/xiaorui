@@ -70,6 +70,7 @@ class TextDeliveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(quick_answer('你好，帮我下单'),None)
         for text in ['确认叫车','取消订单','帮我查北京天气']:
             receipt=acknowledgement(text)
+            self.assertEqual(receipt,'')
             self.assertNotIn('成功',receipt)
             self.assertNotIn('已下单',receipt)
             self.assertNotIn('确认叫车',receipt)
@@ -92,7 +93,7 @@ class BackgroundNarrationQueueTests(unittest.IsolatedAsyncioTestCase):
             try:
                 receipt=contact.enqueue('a','first','text-first')
                 self.assertEqual(receipt,contact.enqueue('a','first','text-first'))
-                self.assertEqual(receipt['event']['ack_text'],'收到，我看看。')
+                self.assertEqual(receipt['event']['ack_text'],'')
                 await asyncio.wait_for(entered.wait(),2)
                 contact.enqueue('a','second','text-second')
                 await asyncio.wait_for(contact.workers['a'],2)

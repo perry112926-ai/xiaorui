@@ -123,6 +123,8 @@ class AgentService:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.data_dir.chmod(0o700)
         self.store = store or FoundationStore(self.data_dir / 'foundation.sqlite3', recover_running=False)
+        from app.companion_memory import CompanionMemory
+        self.memory = CompanionMemory(self.data_dir / 'companion.sqlite3')
         self.skills = SkillRegistry(service, plans)
         self.speech = SpeechComposer()
         self.life_skills = LifeSkills()
@@ -357,6 +359,7 @@ class AgentService:
                     'guidance':'正在实时电话通话。像真人打电话一样简短承接用户的话，默认一两句短口语。缺资料时只问当前最必要的一项，不先罗列后续还要提供的多项资料。对方说没听清、不会操作或让你一句一句说时，减少信息量，一步一步引导，不声称已经调整硬件音量或语速。主动问一个推进当前事情所必需的问题，不重复已知条件。需要选择时发真实卡片，并说我给您发了卡片，选好告诉我。不要假设用户正在看屏幕；可语音解释选项。通话不改变真实交易确认规则。' if contact_call.get() else '普通消息聊天。自然承接上下文，必要时主动问一个问题，不机械追加问句。'}),
                     data_context('capability_policy', {'read_only': read_only.READ_ONLY, 'message': read_only.MESSAGE if read_only.READ_ONLY else '依实际工具能力执行'}),
                     data_context('canonical_profile', self.store.model_profile()),
+                    data_context('companion_memory', self.memory.recall(owner, session.forget_epoch, text)),
                     data_context('service_candidates', model_safe(candidate_context(session.services))),
                     data_context('recent_actions', model_safe([self.actions.public(p) for p in self.actions.list(owner)[:8]])),
                     data_context('current_candidates', {
@@ -379,7 +382,7 @@ class AgentService:
         result = None
         started = time.monotonic()
         first_text = True
-        notify({'type': 'progress', 'stage': 'understanding', 'text': '收到，正在理解您的意思'})
+        notify({'type': 'progress', 'stage': 'understanding', 'text': '正在输入…'})
         async with bot:
             media_kwargs = {'media': contact_media.get()} if contact_media.get() else {}
             async for event in bot.stream(text, session_key=key, **media_kwargs):
@@ -533,6 +536,8 @@ class AgentService:
                     status='unknown'
                 elif action_states & {'failed','expired'}:
                     status='failed'
+                memory_status = await self.memory.learn(owner, session.forget_epoch, text, self._config())
+                trace.append({'type': 'memory.learn', 'status': memory_status})
                 self.store.finish_task(task_id, status, result={'text': answer, 'trace': trace})
                 return response
             except asyncio.CancelledError:

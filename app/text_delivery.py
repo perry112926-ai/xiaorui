@@ -21,10 +21,5 @@ def quick_answer(text):
 
 
 def acknowledgement(text):
-    if quick_answer(text):
-        return ''
-    if re.search(r'确认|取消|下单|付款|支付',text):
-        return '收到，我先核对一下。'
-    if re.search(r'查|天气|路线|附近|找|打车|叫车|点餐|外卖',text):
-        return '好，我帮您看看。'
-    return '收到，我看看。'
+    """Delivery is transport state; only actual replies belong in conversation."""
+    return ''

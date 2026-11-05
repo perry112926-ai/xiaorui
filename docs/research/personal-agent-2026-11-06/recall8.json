@@ -1,0 +1,37 @@
+{
+  "dataset": "LoCoMo10",
+  "sha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+  "metric": "evidence recall@8, not QA accuracy",
+  "overall": {
+    "n": 1982,
+    "all_evidence_recall": 0.5095862764883956,
+    "any_evidence_recall": 0.5918264379414733
+  },
+  "categories": {
+    "2": {
+      "n": 321,
+      "all_evidence_recall": 0.5794392523364486,
+      "any_evidence_recall": 0.6448598130841121
+    },
+    "3": {
+      "n": 92,
+      "all_evidence_recall": 0.16304347826086957,
+      "any_evidence_recall": 0.34782608695652173
+    },
+    "1": {
+      "n": 282,
+      "all_evidence_recall": 0.0673758865248227,
+      "any_evidence_recall": 0.4078014184397163
+    },
+    "4": {
+      "n": 841,
+      "all_evidence_recall": 0.6123662306777645,
+      "any_evidence_recall": 0.638525564803805
+    },
+    "5": {
+      "n": 446,
+      "all_evidence_recall": 0.6165919282511211,
+      "any_evidence_recall": 0.6322869955156951
+    }
+  }
+}
