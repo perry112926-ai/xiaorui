@@ -129,7 +129,7 @@ export function App(){
   const submissionKey=JSON.stringify([phoneId||'chat',text,outgoingImages.map(image=>image.id)]);if(inflightSends.current.has(submissionKey))return;inflightSends.current.add(submissionKey);
   try{
   if(outgoingImages.length)setAttachments([]);setExtrasOpen(false);
-  if(phoneId||!activePhone.current){voice.stopSpeech();autoplayAllowed.current=true;interrupted.current=true;}setVoiceNotice('');if(spoken===undefined)setInput('');setActiveChoices(undefined);setActiveAction('');setPlan(undefined);setModal(false);
+  if(phoneId||!activePhone.current){if(!phoneId)voice.stopSpeech();autoplayAllowed.current=true;interrupted.current=true;if(phoneId)void voice.feedback(text,true);}setVoiceNotice('');if(spoken===undefined)setInput('');setActiveChoices(undefined);setActiveAction('');setPlan(undefined);setModal(false);
   const client_id=crypto.randomUUID();if(!phoneId){add({role:'user',text,client_id,images:outgoingImages,delivery:'正在发送'});add({role:'assistant',text:'',pending:true,replyTo:client_id,progress:'正在发送消息…'});}
   if(/打车|叫车|我在哪|我的位置|当前位置|定位/.test(text)&&!/^确认/.test(text)&&Date.now()-locationFresh.current>110000)await requestLocation();
   await transmit(text,client_id,outgoingImages,phoneId);
@@ -157,7 +157,7 @@ export function App(){
  function hangup(){autoplayAllowed.current=false;interrupted.current=true;voice.endCall();setVoiceNotice('已挂断。');void finishPhone();}
  async function startPhone(){if(startingPhone.current||activePhone.current)return;startingPhone.current=true;setExtrasOpen(false);setError('');try{const call=await api<PhoneCall>('/api/contact/calls',{});activePhone.current=call;setPhone(call);autoplayAllowed.current=true;setVoiceNotice('');const connected=await voice.startCall();if(!connected&&activePhone.current?.id===call.id)await finishPhone();}catch(e){setError(e instanceof Error?e.message:'暂时无法接通电话。');void finishPhone();}finally{startingPhone.current=false;}}
  useEffect(()=>{if(phone&&!voice.inCall&&!startingPhone.current)void finishPhone();},[voice.inCall,phone]);
- useEffect(()=>{if(phone&&voice.inCall&&voice.phase==='listening'&&greetedPhone.current!==phone.id){greetedPhone.current=phone.id;void voice.speak('我在呢，今天想跟我聊点什么？');}},[phone,voice.inCall,voice.phase]);
+ useEffect(()=>{if(phone&&voice.inCall&&voice.phase==='listening'&&greetedPhone.current!==phone.id){greetedPhone.current=phone.id;void voice.feedback('喂');}},[phone,voice.inCall,voice.phase]);
  function switchInput(){if(messageCaptureActive)cancelVoiceMessage();setInputMode(old=>old==='text'?'voice':'text');setExtrasOpen(false);}
  async function chooseStore(s:Store){await send(`选择门店：${s.name}。`,activePhone.current?.id)}
  async function selectMeal(m:Meal,index:number){await send(`选第${index+1}份套餐，${m.name}。`,activePhone.current?.id)}

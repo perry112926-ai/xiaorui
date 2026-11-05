@@ -1,0 +1,92 @@
+{
+  "date": "2026-11-05",
+  "business_writes": false,
+  "real_personal_profile_loaded": false,
+  "real_cloud_asr": [
+    {
+      "input": "喂。",
+      "transcript": "喂。",
+      "partials": [
+        {
+          "text": "喂",
+          "at_ms": 2017
+        }
+      ],
+      "final_after_input_audio_end_ms": 1549,
+      "synthetic_audio": true,
+      "physical_microphone": false
+    },
+    {
+      "input": "帮我看看明天的天气。",
+      "transcript": "帮我看看明天的天气。",
+      "partials": [
+        {
+          "text": "帮",
+          "at_ms": 1127
+        },
+        {
+          "text": "帮我",
+          "at_ms": 1223
+        },
+        {
+          "text": "帮我看看",
+          "at_ms": 1563
+        },
+        {
+          "text": "帮我看看明天的",
+          "at_ms": 1811
+        },
+        {
+          "text": "帮我看看明天的天气",
+          "at_ms": 2549
+        }
+      ],
+      "final_after_input_audio_end_ms": 1443,
+      "synthetic_audio": true,
+      "physical_microphone": false
+    }
+  ],
+  "browser": {
+    "production_audio_worklet": true,
+    "synthetic_microphone_input": true,
+    "physical_microphone": false,
+    "native_audio_playback": true,
+    "last_voiced_frame_to_playing_ms": [
+      249,
+      348
+    ],
+    "latest_metrics": [
+      {
+        "stage": "feedback_load_start",
+        "sentence": 0,
+        "elapsedMs": 0
+      },
+      {
+        "stage": "feedback_ready",
+        "sentence": 0,
+        "elapsedMs": 1
+      },
+      {
+        "stage": "feedback_playback_started",
+        "sentence": 0,
+        "elapsedMs": 8,
+        "sinceUserSpeechMs": 348
+      }
+    ],
+    "button_playback_started_ms": [
+      22,
+      16
+    ],
+    "explicit_stop_verified": true
+  },
+  "limits": [
+    "No physical room microphone, echo or dialect validation.",
+    "Audio-element playing event is not exact ear-level audible-onset time.",
+    "Fixed short feedback is not an answer or transaction authorization; full business result latency is separate."
+  ],
+  "sources": [
+    "https://github.com/livekit/agents/blob/main/livekit-agents/livekit/agents/voice/agent.py",
+    "https://github.com/pipecat-ai/pipecat",
+    "https://github.com/TEN-framework/ten-framework"
+  ]
+}

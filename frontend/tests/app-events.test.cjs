@@ -5,8 +5,8 @@ const React=require('react');
 const code=ts.transpileModule(fs.readFileSync(require.resolve('../src/main.tsx'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
 function harness(options={}){
  const slots=[];let index=0,callbacks,source;
- const spoken=[];const requests=[];let cancellations=0;
- const voice={phase:'listening',inCall:true,recording:false,transcript:'',speaking:false,loadingSpeech:false,speak:async text=>spoken.push(text),stopSpeech(){},cancel(){},cancelRecording(){cancellations++;voice.phase='idle';voice.recording=false;},startCall:async()=>{voice.inCall=true;voice.phase='listening';return true;},endCall(){voice.inCall=false;voice.phase='idle';}};
+ const spoken=[],feedback=[];const requests=[];let cancellations=0;
+ const voice={phase:'listening',inCall:true,recording:false,transcript:'',speaking:false,loadingSpeech:false,speak:async text=>spoken.push(text),feedback:async text=>feedback.push(text),stopSpeech(){},cancel(){},cancelRecording(){cancellations++;voice.phase='idle';voice.recording=false;},startCall:async()=>{voice.inCall=true;voice.phase='listening';return true;},endCall(){voice.inCall=false;voice.phase='idle';}};
  const hooks={...React,useState(initial){const i=index++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return[slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value;}];},useRef(value){const i=index++;if(!(i in slots))slots[i]={current:value};return slots[i];},useEffect(effect,deps){const i=index++;const old=slots[i];if(!old||!deps||deps.some((value,n)=>value!==old[n])){slots[i]=deps;effect();}}};
  class EventSource{constructor(){source=this;}close(){}}
  const module={exports:{}};
@@ -14,7 +14,7 @@ function harness(options={}){
  vm.runInNewContext(code,{module,exports:module.exports,require:name=>name==='react'?hooks:name==='react-dom/client'?{createRoot:()=>({render(){}})}:name==='./useVoice'?{useVoice:(onFinal,onError,onSpeechStart)=>{callbacks={onFinal,onError,onSpeechStart};return voice;}}:name==='./Companion'?{Companion(){},CompanionAvatar(){},companionMood:()=> 'idle'}:name==='./SettingsDialog'?{SettingsDialog(){},useCompanionSettings:()=>({settings:{name:'小瑞',avatar:'portrait'},updateSettings(){}})}:name==='./CallBar'?{CallBar(){},callDuration:s=>String(s)}:name==='./ProfileCard'?{ProfileCard(){}}:name==='./location'?{locate:async()=>10}:name==='./ActionCard'||name==='./ChoiceCards'?{}:name.endsWith('.css')?{}:require(name),document:{getElementById:()=>({}),addEventListener(){},removeEventListener(){}},EventSource,fetch,crypto:require('node:crypto'),setInterval:()=>1,clearInterval(){},console});
  const render=()=>{index=0;return module.exports.App();};
  const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
- return{render,flush,spoken,voice,requests,get cancellations(){return cancellations;},get callbacks(){return callbacks;},emit:event=>source.onmessage({data:JSON.stringify(event)})};
+ return{render,flush,spoken,feedback,voice,requests,get cancellations(){return cancellations;},get callbacks(){return callbacks;},emit:event=>source.onmessage({data:JSON.stringify(event)})};
 }
 function all(node,predicate){if(!node||typeof node!=='object')return[];return[predicate(node)?node:null,...React.Children.toArray(node.props?.children).flatMap(child=>all(child,predicate))].filter(Boolean);}
 const reply=(id,text,events=[])=>({type:'completed',message_id:id,response:{text,speech_text:text,events}});
@@ -93,12 +93,23 @@ test('phone preserves composer, speaks an opening question and routes spoken tur
  assert.equal(all(tree,n=>n.type==='textarea').length,1);
  assert.equal(all(tree,n=>n.type?.name==='CallBar').length,1);
  assert.equal(all(tree,n=>n.props?.className==='call-bar').length,0);
- assert.ok(h.spoken.some(text=>text.includes('聊点什么')));
+ assert.ok(h.feedback.includes('喂'));
  h.callbacks.onFinal('今天想吃午饭');await h.flush();tree=h.render();
  const request=h.requests.find(r=>r.url==='/api/contact/messages');assert.equal(JSON.parse(request.options.body).call_id,'call-test-1');
  h.emit({type:'accepted',call_id:'call-test-1',message_id:'voice-1',client_id:'voice-1',text:'今天想吃午饭'});
  h.emit({type:'delta',call_id:'call-test-1',message_id:'voice-1',text:'电话中不落气泡'});
  tree=h.render();assert.equal(all(tree,n=>n.type==='article').length,0);
+});
+
+test('phone acknowledges each new request before the background answer exists',async()=>{
+ const h=harness();await connectPhone(h);h.feedback.length=0;h.spoken.length=0;
+ h.callbacks.onFinal('帮我看看明天的天气');
+ assert.deepEqual(h.feedback,['帮我看看明天的天气']);
+ assert.deepEqual(h.spoken,[]);
+ await h.flush();h.render();
+ h.emit({type:'started',call_id:'call-test-1',message_id:'quick-weather'});
+ h.emit({...reply('quick-weather','这是查询后的真实结果'),call_id:'call-test-1'});
+ assert.deepEqual(h.spoken,['这是查询后的真实结果']);
 });
 test('phone cards appear without transcripts; hangup restores typing and leaves one duration record',async()=>{
  const h=harness();let tree=await connectPhone(h);const count=h.spoken.length;
@@ -196,7 +207,6 @@ test('elderly user cannot grant microphone permission: end the call record and k
  const tree=await connectPhone(h);assert.equal(all(tree,n=>n.type?.name==='CallBar').length,0);assert.equal(all(tree,n=>n.type==='textarea').length,1);assert.equal(h.requests.filter(r=>r.url.endsWith('/end')).length,1);
  assert.ok(all(tree,n=>n.props?.role==='alert').some(n=>JSON.stringify(n.props.children).includes('麦克风未获允许')));
 });
-
 
 test('selecting a meal card sends its exact candidate once and waits for server options, never confirms an order',async()=>{
  const h=harness();h.render();await h.flush();h.voice.inCall=false;h.voice.phase='idle';
