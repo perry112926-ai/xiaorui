@@ -5,5 +5,6 @@ export function officialPaymentUrl(plan:{provider?:string;action?:string;status?
 }
 export function openOfficialPayment(plan:Parameters<typeof officialPaymentUrl>[0]){
  const url=officialPaymentUrl(plan);if(!url)return false;
- window.location.assign(url);return true;
+ // The created order retains a normal target=_blank link if popups are blocked.
+ window.open(url,'_blank','noopener,noreferrer');return true;
 }
