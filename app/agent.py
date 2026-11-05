@@ -247,6 +247,11 @@ class AgentService:
         return {'tasks': tasks}
 
     async def _tool(self, session, owner, name, arguments, events):
+        if name == 'fliggy_search_flights':
+            # The flight adapter already exposes only its explicit public contract.
+            result = await self.life_skills.dispatch(session, name, arguments)
+            events.append({'type':'flight_result','data':result})
+            return result
         if read_only.READ_ONLY and name not in read_only.QUERY_TOOLS:
             return {'error': read_only.MESSAGE}
         if name in AMAP_SCHEMAS:
@@ -323,6 +328,7 @@ class AgentService:
             return boundary
         weather_reports=[]
         terminal_replies=[]
+        flight_results=[]
         async def dispatch(name, arguments):
             notify(tool_activity(name))
             started = time.monotonic()
@@ -333,6 +339,8 @@ class AgentService:
                               'name': name if name in SCHEMAS else 'unknown',
                               'elapsed_ms': round((time.monotonic() - started) * 1000)})
             terminal_replies.append(terminal_reply(name, result, text))
+            if name == 'fliggy_search_flights':
+                flight_results.append(result)
             self.store.save_session(owner, session.snapshot())
             if isinstance(result, dict) and 'error' in result:
                 trace.append({'type': 'tool.error', 'name': name})
@@ -404,6 +412,11 @@ class AgentService:
             raise AgentError('当前配置的文本模型尚未开通，请家人在设置中选择已开通的模型或到服务平台开通；本次没有下单。',503)
         if result is None or result.error or result.stop_reason != 'completed':
             raise AgentError('小瑞本次任务尚未完成，请查看已有结果后重试。')
+        if flight_results:
+            from app.fliggy import flight_reply
+            answer = flight_reply(flight_results[-1])
+            notify({'type':'delta','text':answer})
+            return answer
         if not isinstance(result.content, str) or not result.content.strip():
             raise AgentError('小瑞暂时没有生成回复，请重试。')
         notify({'type': 'progress', 'stage': 'narration', 'text': '回复已生成，正在整理成简短的话'})
@@ -428,6 +441,13 @@ class AgentService:
         spoken = session.speech_turn or speech_fallback(speech_context(text, answer, events, session.display, self.store.model_profile()))
         if any(event.get('type') in {'plan','action_plan'} for event in events):
             spoken = speech_fallback(speech_context(text, answer, events, session.display, self.store.model_profile()))
+        flight_events = [e for e in events if e.get('type') == 'flight_result']
+        if flight_events:
+            from app.fliggy import flight_reply
+            answer = flight_reply(flight_events[-1]['data'])
+            spoken = {'text': flight_events[-1]['data'].get('error') or '本次航班查询结果和飞猪预订链接已显示。尚未订票或付款，请在飞猪核对信息后确认付款。',
+                      'source':'grounded', 'stage':'business'}
+            session.defer_speech = False
         response = {'text': answer, 'speech_text': spoken['text'], 'speech_source': spoken['source'],
                     'speech_stage': spoken['stage'], 'events': events,
                     'runtime': 'nanobot', 'task_id': task_id, 'trace': trace,

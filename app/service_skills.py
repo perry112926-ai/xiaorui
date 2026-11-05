@@ -2,6 +2,7 @@
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from app.life_services import OfficialMcp, ServiceUnavailable
+from app.fliggy import Fliggy, SCHEMAS as FLIGGY_SCHEMAS
 
 
 class Query(BaseModel):
@@ -35,6 +36,7 @@ class DidiEstimate(Query):
 
 
 SERVICE_SCHEMAS = {
+    **FLIGGY_SCHEMAS,
     'luckin_search_stores': (LuckinStores, '查询北京瑞幸门店。经纬度必须来自本轮用户明确提供的位置或真实定位结果，不可猜测；当前无自动定位工具，缺坐标先询问。'),
     'luckin_search_products': (LuckinProducts, '用户选定当前瑞幸门店后，按用户原话查询真实饮品及规格候选。store_index为本轮返回的门店序号。'),
     'luckin_preview': (LuckinPreview, '按用户选定的当前饮品序号预览订单、核价；规格取候选实际返回值，未满足温度糖度要求时不能擅自预览。这不会下单或支付。'),
@@ -51,6 +53,7 @@ def rows(data):
 
 class LifeSkills:
     def __init__(self):
+        self.fliggy = Fliggy()
         self.luckin, self.didi = OfficialMcp('luckin'), OfficialMcp('didi')
 
     @staticmethod
@@ -60,6 +63,8 @@ class LifeSkills:
         return items[index - 1]
 
     async def dispatch(self, session, name, arguments):
+        if name in FLIGGY_SCHEMAS:
+            return await self.fliggy.dispatch(arguments)
         try:
             args = SERVICE_SCHEMAS[name][0].model_validate(arguments)
             state = session.services
