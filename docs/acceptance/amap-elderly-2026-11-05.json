@@ -7,55 +7,68 @@
   "api_contracts": [
     {
       "id": "current_weather",
-      "passed": true
+      "passed": true,
+      "returned_items": 1
     },
     {
       "id": "dated_forecast",
-      "passed": true
+      "passed": true,
+      "returned_items": 1
     },
     {
       "id": "real_origin",
-      "passed": true
+      "passed": true,
+      "returned_items": 5
     },
     {
       "id": "nearby_药店",
-      "passed": true
+      "passed": true,
+      "returned_items": 5
     },
     {
       "id": "nearby_公共厕所",
-      "passed": true
+      "passed": true,
+      "returned_items": 5
     },
     {
       "id": "nearby_医院",
-      "passed": true
+      "passed": true,
+      "returned_items": 5
     },
     {
       "id": "nearby_公园",
-      "passed": true
+      "passed": true,
+      "returned_items": 5
     },
     {
       "id": "geocode_destination",
-      "passed": true
+      "passed": true,
+      "returned_items": 1
     },
     {
       "id": "walking",
-      "passed": true
+      "passed": true,
+      "returned_items": 1
     },
     {
       "id": "driving",
-      "passed": true
+      "passed": true,
+      "returned_items": 1
     },
     {
       "id": "transit",
-      "passed": true
+      "passed": true,
+      "returned_items": 3
     },
     {
       "id": "empty_search",
-      "passed": true
+      "passed": true,
+      "returned_items": 0
     },
     {
       "id": "empty_cannot_reuse_previous_destination",
-      "passed": true
+      "passed": true,
+      "returned_items": 0
     }
   ],
   "historical_failures": [
@@ -2384,5 +2397,12 @@
       "public_location_fixture": false,
       "public_profile_fixture": false
     }
-  ]
+  ],
+  "automated_verification": {
+    "backend_tests_passed": 262,
+    "amap_tests_passed": 16,
+    "frontend_changed_by_this_task": false,
+    "real_microphone_verified": false
+  },
+  "code_revision": "4919756"
 }
