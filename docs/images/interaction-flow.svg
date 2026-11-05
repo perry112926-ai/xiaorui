@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="270" viewBox="0 0 1080 270" role="img" aria-labelledby="title desc">
+<title id="title">从一句话到核对方案</title><desc id="desc">用户表达需求，小瑞查询真实服务并展示选项；用户核对具体方案，确认后才执行。这是交互示意，不是真实交易凭证。</desc>
+<rect width="1080" height="270" rx="24" fill="#f4f7f2"/>
+<g font-family="system-ui,sans-serif" fill="#243e35">
+<text x="38" y="44" font-size="22" font-weight="600">您说需求，小瑞一步一步帮您核对</text>
+<g fill="#fff" stroke="#cbd8ce"><rect x="38" y="78" width="290" height="146" rx="18"/><rect x="395" y="78" width="290" height="146" rx="18"/><rect x="752" y="78" width="290" height="146" rx="18"/></g>
+<g font-size="21" font-weight="600"><text x="61" y="118">① 说出需求</text><text x="418" y="118">② 看真实选项</text><text x="775" y="118">③ 核对再确认</text></g>
+<g font-size="17"><text x="61" y="159">“帮我看看附近的麦当劳”</text><text x="418" y="159">门店、餐品、搭配和费用</text><text x="775" y="159">金额或内容变化，就重新确认</text><text x="61" y="193">也可以打字或发送图片</text><text x="418" y="193">缺少条件时，一次问一项</text><text x="775" y="193">付款在官方页面完成</text></g>
+<g font-size="28"><text x="349" y="162">→</text><text x="706" y="162">→</text></g>
+<text x="38" y="253" font-size="13" fill="#597064">交互流程示意 · 真实交易默认关闭，需家人配置与逐笔确认</text>
+</g></svg>

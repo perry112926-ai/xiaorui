@@ -1,7 +1,7 @@
 import React,{useState} from 'react';
 import {CardHeading} from './CardHeading';
 
-export type ChoiceCard={label:string;detail?:string;image?:string;prompt:string;kind?:'product';price_yuan?:string;price_kind?:'menu'|'quote';recommendation_id?:string;contents?:string[];fee_breakdown?:string};
+export type ChoiceCard={available?:boolean;label:string;detail?:string;image?:string;prompt:string;kind?:'product';price_yuan?:string;price_kind?:'menu'|'quote';recommendation_id?:string;contents?:string[];fee_breakdown?:string};
 export function productImage(source?:string){
  if(!source)return undefined;
  // Provider images only. No invented stock pictures for missing food photos.
@@ -24,10 +24,10 @@ export function choiceHeading(choices:ChoiceCard[]){
 export function ChoiceCards({choices,disabled,onChoose}:{choices:ChoiceCard[];disabled:boolean;onChoose:(prompt:string)=>void}){
  const heading=choiceHeading(choices);
  const food=choices.length>0&&choices.every(c=>c.kind==='product');
- if(!food)return <section className="choice-panel" aria-label="可选方案"><CardHeading icon={heading.icon} eyebrow="供您选择" title={heading.title} description={heading.description} status={`${choices.length} 个选项`}/><div className="service-choice-grid">{choices.map((c,i)=><button className="store-card" key={i} disabled={disabled} onClick={()=>onChoose(c.prompt)}>{productImage(c.image)&&<img src={productImage(c.image)} alt={c.label} loading="lazy"/>}<strong>{c.label}</strong>{c.detail&&<span>{c.detail}</span>}</button>)}</div></section>;
+ if(!food)return <section className="choice-panel" aria-label="可选方案"><CardHeading icon={heading.icon} eyebrow="供您选择" title={heading.title} description={heading.description} status={`${choices.length} 个选项`}/><div className="service-choice-grid">{choices.map((c,i)=><button className="store-card" key={i} disabled={disabled||c.available===false} onClick={()=>onChoose(c.prompt)}>{productImage(c.image)&&<img src={productImage(c.image)} alt={c.label} loading="lazy"/>}<strong>{c.label}</strong>{c.detail&&<span>{c.detail}</span>}</button>)}</div></section>;
  return <section className="food-choices choice-panel" aria-label="餐品图片和价格">
   <CardHeading icon="meal" eyebrow="麦当劳 · 本次推荐" title="为您挑选的餐品" description="看看图片、搭配和价格，选一份喜欢的。" status={choices.every(c=>c.price_kind==='quote')?'已核价':'菜单参考价'}/>
-  <div className={"food-choice-grid"+(choices.every(c=>c.price_kind==='quote')?' ready-meals':'')}>{choices.map((c,i)=><button type="button" className="food-choice" key={`${i}-${c.label}`} disabled={disabled} onClick={()=>onChoose(c.prompt)} aria-label={`选择${c.label}，${c.price_yuan!==undefined?`${c.price_kind==='quote'?'本次核价':'菜单参考价'}${c.price_yuan}元`:'价格待查询'}，继续核对`}>
+  <div className={"food-choice-grid"+(choices.every(c=>c.price_kind==='quote')?' ready-meals':'')}>{choices.map((c,i)=><button type="button" className="food-choice" key={`${i}-${c.label}`} disabled={disabled||c.available===false} onClick={()=>onChoose(c.prompt)} aria-label={`选择${c.label}，${c.price_yuan!==undefined?`${c.price_kind==='quote'?'本次核价':'菜单参考价'}${c.price_yuan}元`:'价格待查询'}，继续核对`}>
    <ProductPhoto source={c.image} name={c.label} eager={!disabled}/>
    <div className="food-choice-content"><span className="food-choice-number">第 {i+1} 份</span><strong className="food-choice-name">{c.label}</strong>
     <span className="food-choice-price">{c.price_yuan!==undefined?<><span className="food-currency">¥</span>{c.price_yuan}</>:<span className="food-price-missing">价格待查询</span>}</span>

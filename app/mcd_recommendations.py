@@ -209,7 +209,7 @@ async def choose(scenario,state,owner,id,events,overrides=None,need_tableware=No
         if not result['products']:result['error']=str(exc)
         return result
     if quote['amount_cents']!=meal['quote']['amount_cents']:
-        quote['summary']['报价变化']=f"推荐时 {format_cents(meal['quote']['amount_cents'])} 元，现在 {format_cents(quote['amount_cents'])} 元，请核对新总价。"
+        quote['summary']['quote_change']=f"推荐时 {format_cents(meal['quote']['amount_cents'])} 元，现在 {format_cents(quote['amount_cents'])} 元，请核对新总价。"
     plan=scenario.transactions.prepare(owner,provider='mcd',action='create',request=quote['request'],quote=quote)
     selected=quote['request']['payload']['items'][0]
     state['cart']=[{'product':copy.deepcopy(meal['product']),'quantity':selected['quantity'],

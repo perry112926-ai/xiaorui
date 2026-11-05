@@ -51,7 +51,7 @@ class ProgressTests(unittest.IsolatedAsyncioTestCase):
                 contact_observer.reset(token)
             statuses = [event['text'] for event in received if event['type'] == 'progress']
             self.assertIn('正在查麦当劳菜单', statuses)
-            self.assertEqual(statuses[-1], '回复已生成，正在整理成简短的话')
+            self.assertEqual(statuses[-1], '已核对真实结果，正在显示')
             timing = [event for event in result['trace'] if event['type'] == 'timing']
             self.assertEqual({event['stage'] for event in timing}, {
                 'tool', 'first_text', 'runtime_including_tools', 'speech_composition'})

@@ -10,16 +10,16 @@ function harness(options={}){
  vm.runInNewContext(ts.transpileModule(fs.readFileSync(require.resolve('../src/payment.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module:paymentModule,exports:paymentModule.exports,URL,window:{open:(url,target,features)=>{if(target!=='_blank'||features!=='noopener,noreferrer')throw Error('unsafe payment window');paymentNavigations.push(url);}}});
  const spoken=[],feedback=[];const requests=[];let cancellations=0;
  const voice={phase:'listening',inCall:true,recording:false,transcript:'',speaking:false,loadingSpeech:false,speak:async text=>spoken.push(text),feedback:async text=>feedback.push(text),stopSpeech(){},cancel(){},cancelRecording(){cancellations++;voice.phase='idle';voice.recording=false;},startCall:async()=>{voice.inCall=true;voice.phase='listening';return true;},endCall(){voice.inCall=false;voice.phase='idle';}};
- const hooks={...React,useState(initial){const i=index++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return[slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value;}];},useRef(value){const i=index++;if(!(i in slots))slots[i]={current:value};return slots[i];},useEffect(effect,deps){const i=index++;const old=slots[i];if(!old||!deps||deps.some((value,n)=>value!==old[n])){slots[i]=deps;effect();}}};
+ const hooks={...React,useReducer(reducer,initial){const [state,setState]=hooks.useState(initial);return[state,action=>setState(old=>reducer(old,action))];},useState(initial){const i=index++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return[slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value;}];},useRef(value){const i=index++;if(!(i in slots))slots[i]={current:value};return slots[i];},useEffect(effect,deps){const i=index++;const old=slots[i];if(!old||!deps||deps.some((value,n)=>value!==old[n])){slots[i]=deps;effect();}}};
  class EventSource{constructor(){source=this;}close(){}}
  const module={exports:{}};
  const fetch=async (url,requestOptions)=>{requests.push({url,options:requestOptions});if(options.request){const result=await options.request(url,requestOptions);if(result)return result;}return{ok:true,headers:{get:()=> 'application/json'},json:async()=>url==='/api/health'?{mcd_configured:true,agent_configured:true}:url==='/api/contact/state'?{events:options.replay||[],cursor:0,pending:0}:url==='/api/chat/history'?{messages:[]}:url==='/api/actions'?{actions:[]}:url==='/api/contact/calls'?{id:'call-test-1',started_at:Date.now()/1000}:url.endsWith('/end')?{id:'call-test-1',started_at:Date.now()/1000-65,duration_seconds:65}: {accepted:true}};};
- vm.runInNewContext(code,{module,exports:module.exports,require:name=>name==='./CardHeading'?require('./load-card-heading.cjs'):name==='react'?hooks:name==='react-dom/client'?{createRoot:()=>({render(){}})}:name==='./useVoice'?{useVoice:(onFinal,onError,onSpeechStart)=>{callbacks={onFinal,onError,onSpeechStart};return voice;}}:name==='./Companion'?{Companion(){},CompanionAvatar(){},companionMood:()=> 'idle'}:name==='./SettingsDialog'?{SettingsDialog(){},useCompanionSettings:()=>({settings:{name:'小瑞',avatar:'portrait'},updateSettings(){}})}:name==='./CallBar'?{CallBar(){},callDuration:s=>String(s)}:name==='./ProfileCard'?{ProfileCard(){}}:name==='./location'?{locate:async()=>10}:name==='./payment'?paymentModule.exports:name==='./ActionCard'||name==='./ChoiceCards'?{}:name.endsWith('.css')?{}:name==='./money'?require('./load-money.cjs'):require(name),document:{getElementById:()=>({}),addEventListener(){},removeEventListener(){}},EventSource,fetch,crypto:require('node:crypto'),setInterval:()=>1,clearInterval(){},console});
+ require('./load-frontend.cjs')(code,{module,exports:module.exports,require:name=>name==='./CardHeading'?require('./load-card-heading.cjs'):name==='react'?hooks:name==='react-dom/client'?{createRoot:()=>({render(){}})}:name==='./useVoice'?{useVoice:(onFinal,onError,onSpeechStart)=>{callbacks={onFinal,onError,onSpeechStart};return voice;}}:name==='./Companion'?{Companion(){},CompanionAvatar(){},companionMood:()=> 'idle'}:name==='./SettingsDialog'?{SettingsDialog(){},useCompanionSettings:()=>({settings:{name:'小瑞',avatar:'portrait'},updateSettings(){}})}:name==='./CallBar'?{CallBar(){},callDuration:s=>String(s)}:name==='./ProfileCard'?{ProfileCard(){}}:name==='./location'?{locate:async()=>10}:name==='./payment'?paymentModule.exports:name==='./ActionCard'||name==='./ChoiceCards'?{}:name.endsWith('.css')?{}:name==='./money'?require('./load-money.cjs'):require(name),document:{getElementById:()=>({}),addEventListener(){},removeEventListener(){}},EventSource,fetch,crypto:require('node:crypto'),setInterval:()=>1,clearInterval(){},console});
  const render=()=>{index=0;return module.exports.App();};
  const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
  return{render,flush,spoken,feedback,voice,requests,paymentNavigations,get cancellations(){return cancellations;},get callbacks(){return callbacks;},emit:event=>source.onmessage({data:JSON.stringify(event)})};
 }
-function all(node,predicate){if(!node||typeof node!=='object')return[];return[predicate(node)?node:null,...React.Children.toArray(node.props?.children).flatMap(child=>all(child,predicate))].filter(Boolean);}
+function all(node,predicate){if(!node||typeof node!=='object')return[];if(typeof node.type==='function'&&['AppView','Conversation','Composer','MessageItem','StoreCards','MealCards','Mic','Keyboard','Photo','Phone'].includes(node.type.name))return[predicate(node)?node:null,...all(node.type(node.props),predicate)].filter(Boolean);return[predicate(node)?node:null,...React.Children.toArray(node.props?.children).flatMap(child=>all(child,predicate))].filter(Boolean);}
 const reply=(id,text,events=[])=>({type:'completed',message_id:id,response:{text,speech_text:text,events}});
 test('caller speech blocks late autoplay even when an old started event arrives afterwards; new final permits its own reply',async()=>{
  const h=harness();h.render();await h.flush();h.render();
@@ -142,7 +142,7 @@ test('phone cards appear without transcripts; hangup restores typing and leaves 
 });
 test('replayed call turns remain hidden and durable call summaries deduplicate',async()=>{
  const record={id:'old-call',started_at:1000,duration_seconds:65};
- const h=harness({replay:[{type:'accepted',call_id:'old-call',message_id:'old',text:'不显示的转录'}, {...reply('old','不显示的回复'),call_id:'old-call'},{type:'call_ended',call:record}]});
+ const h=harness({replay:[{type:'accepted',call_id:'old-call',message_id:'old',text:'不显示的转录' ,client_id:'old'}, {...reply('old','不显示的回复'),call_id:'old-call'},{type:'call_ended',call:record}]});
  h.voice.inCall=false;h.voice.phase='idle';h.render();await h.flush();let tree=h.render();
  assert.equal(all(tree,n=>n.props?.className==='phone-record').length,1);assert.equal(all(tree,n=>n.type==='p'&&n.props.className==='message-text').length,0);
  h.emit({type:'call_ended',call:record});tree=h.render();assert.equal(all(tree,n=>n.props?.className==='phone-record').length,1);assert.deepEqual(h.spoken,[]);
@@ -169,7 +169,7 @@ test('texting during a phone call remains an ordinary message and does not inter
  h.emit(reply('sms','这是文字回复'));tree=h.render();assert.equal(h.spoken.length,before);assert.equal(all(tree,n=>n.type?.name==='CallBar').length,1);assert.equal(all(tree,n=>n.type==='textarea').length,1);
 });
 test('phone progress updates only the island subtitle, without a message placeholder',async()=>{
- const h=harness();let tree=await connectPhone(h);h.emit({type:'accepted',call_id:'call-test-1',message_id:'phone-one',text:'电话说的话'});
+ const h=harness();let tree=await connectPhone(h);h.emit({type:'accepted',call_id:'call-test-1',message_id:'phone-one',text:'电话说的话' ,client_id:'phone-one'});
  h.emit({type:'progress',call_id:'call-test-1',message_id:'phone-one',text:'正在查滴滴车型'});tree=h.render();
  assert.equal(all(tree,n=>n.type?.name==='CallBar')[0].props.progress,'正在查滴滴车型');assert.equal(all(tree,n=>n.type?.name==='MessageProgress').length,0);
 
@@ -247,7 +247,7 @@ test('selecting a meal card sends its exact candidate once and waits for server 
 
 
 test('voice final confirmation opens the returned payment page once and ends the call; replay never navigates',async()=>{
- const plan={id:'paid-proposal',provider:'mcd',action:'create',status:'created',summary:{product:'测试套餐'},order:{order_id:'fixture',payment_url:'https://example.invalid/fixture-payment'}};
+ const plan={id:'paid-proposal',provider:'mcd',action:'create',status:'created',execution_enabled:true,confirmation_text:'确认下单',version:1,confirmation_token:'test',expires_at:Date.now()/1000+300,amount_cents:2500,summary:{product:'测试套餐'},order:{order_id:'fixture',payment_url:'https://example.invalid/fixture-payment'}};
  const h=harness();await connectPhone(h);
  const event={...reply('confirmed','订单已创建，接下来到官方页面付款。',[{type:'action_plan',plan}]),call_id:'call-test-1'};
  h.emit(event);await h.flush();h.render();
@@ -256,7 +256,6 @@ test('voice final confirmation opens the returned payment page once and ends the
  assert.equal(h.voice.inCall,false);
  const restored=harness({replay:[event]});restored.render();await restored.flush();restored.render();assert.deepEqual(restored.paymentNavigations,[]);
 });
-
 test('legacy store, meal, order and location cards each expose a purpose heading',async()=>{
  const h=harness();h.render();await h.flush();h.render();
  h.emit(reply('stores','',[{type:'stores',stores:[{code:'demo',name:'演示门店',address:'测试地址'}]}]));
@@ -266,4 +265,22 @@ test('legacy store, meal, order and location cards each expose a purpose heading
  const titles=all(h.render(),n=>n.type?.name==='CardHeading').map(n=>n.props.title);
  for(const title of ['选择方便的取餐门店','挑选一份喜欢的餐品','提供本次位置'])assert.ok(titles.includes(title),title);
  assert.ok(titles.includes('核对您的点餐方案')||all(h.render(),n=>n.props?.plan?.id==='demo').length,'legacy proposals keep a heading or use the unified titled action card');
+});
+
+test('malformed SSE nested plan cannot mutate the conversation or open payment',async()=>{
+ const h=harness();h.render();await h.flush();h.render();
+ h.emit({type:'completed',message_id:'bad',response:{text:'不要显示',events:[{type:'action_plan',plan:{id:'bad',summary:null}}]}});
+ const tree=h.render();assert.equal(all(tree,n=>n.type==='article').length,0);assert.deepEqual(h.paymentNavigations,[]);
+ assert.ok(all(tree,n=>n.props?.role==='alert').some(n=>JSON.stringify(n.props.children).includes('消息显示异常')));
+});
+
+test('duplicate completed delivery never adds a second final reply',async()=>{
+ const h=harness();h.render();await h.flush();h.render();
+ const event=reply('same','唯一的最终回复');h.emit(event);h.emit(event);
+ const tree=h.render();assert.equal(all(tree,n=>n.type==='p'&&n.props.className==='message-text'&&n.props.children==='唯一的最终回复').length,1);
+});
+test('one malformed historical record does not disable valid messages or the composer',async()=>{
+ const h=harness({replay:[{type:'unknown'},reply('valid-history','保留的历史回复')]});h.render();await h.flush();const tree=h.render();
+ assert.equal(all(tree,n=>n.type==='textarea').length,1);
+ assert.ok(all(tree,n=>n.type==='p'&&n.props.className==='message-text'&&n.props.children==='保留的历史回复').length);
 });

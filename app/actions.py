@@ -4,6 +4,7 @@ Models can propose actions. Only a host-verified explicit user confirmation can
 enter confirm(); adapters never receive a model-provided approval capability.
 """
 import asyncio
+import hashlib
 import copy
 import json
 import os
@@ -11,6 +12,7 @@ import secrets
 import sqlite3
 import time
 from app import read_only
+from app.summaries import normalize_summary
 from pathlib import Path
 
 from dotenv import dotenv_values
@@ -90,10 +92,13 @@ class ActionManager:
         result = {key: copy.deepcopy(plan[key]) for key in (
             'id','provider','action','summary','amount_cents','status','version',
             'confirmation_token','expires_at','created_at','order','error') if key in plan}
+        result['summary'] = normalize_summary(result['summary'])
+        result['summary_version'] = 1
         result['execution_enabled'] = plan['action']=='create_address' or self.enabled(plan['provider'])
         result['confirmation_text'] = self.phrase(plan)
         if result.get('order'):
-            result['order'] = {k:v for k,v in result['order'].items() if k not in {'provider_response','raw','request','traceId','confirmation_token'}}
+            from app.model_views import project, UI_ORDER
+            result['order'] = project(result['order'], UI_ORDER)
         return result
 
     @staticmethod
@@ -146,10 +151,11 @@ class ActionManager:
                     p.update(status='superseded', confirmation_token=secrets.token_urlsafe(32))
                     self._write(db, owner, p)
             plan = {'id':secrets.token_urlsafe(24),'provider':provider,'action':action,
-                    'status':'awaiting_confirmation','version':1,'confirmation_token':secrets.token_urlsafe(32),
+                    'status':'awaiting_confirmation','summary_version':1,'version':1,'confirmation_token':secrets.token_urlsafe(32),
                     'created_at':now,'expires_at':now+300,'request':copy.deepcopy(request),
-                    'summary':copy.deepcopy(quote['summary']),'amount_cents':quote['amount_cents'],
-                    'comparison':copy.deepcopy(quote['comparison']),'order':None,'error':None}
+                    'summary':normalize_summary(copy.deepcopy(quote['summary'])),'amount_cents':quote['amount_cents'],
+                    'comparison':copy.deepcopy(quote['comparison']),'order':None,'error':None,
+                    'request_hash':self.request_hash(request)}
             self._write(db, owner, plan)
         return self.public(plan)
 
@@ -183,7 +189,11 @@ class ActionManager:
             self._write(db, owner, plan)
             return plan
 
-    async def confirm(self, owner, id, version, token, text):
+    @staticmethod
+    def request_hash(request):
+        return hashlib.sha256(json.dumps(request,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+
+    def claim(self, owner, id, version, token, text, *, check_enabled=True):
         if read_only.READ_ONLY:
             raise ActionError(read_only.MESSAGE, 403)
         # A SQLite CAS prevents another process from issuing a second request.
@@ -191,20 +201,33 @@ class ActionManager:
             db.execute('BEGIN IMMEDIATE')
             p = self._read(db, owner, id)
             if p['status'] not in self.REVIEW and not (p['status']=='expired' and p['provider']=='mcd' and p['action']=='create'):
-                return self.public(p)
+                if p.get('request',{}).get('legacy_pickup') and p['status'] not in self.BUSY | {'created','failed'}:
+                    raise ActionError('该方案不能继续下单，请重新查询。')
+                return p, False
+            if p.get('request_hash') and p['request_hash'] != self.request_hash(p['request']):
+                raise ActionError('方案内容校验失败，请重新生成。')
             if type(version) is not int or version != p['version'] or not secrets.compare_digest(str(token), p['confirmation_token']) or text != self.phrase(p):
                 raise ActionError('需要确认当前具体方案，请重新核对。')
             expired_quote=p['expires_at'] <= time.time()
-            if expired_quote and not (p['provider']=='mcd' and p['action']=='create'):
+            if expired_quote and not (p['provider']=='mcd' and p['action']=='create' and not p['request'].get('legacy_pickup')):
                 p.update(status='expired', error='报价过期，请重新查询。')
                 self._write(db, owner, p)
-                return self.public(p)
-            if p['action'] != 'create_address' and not self.enabled(p['provider']):
+                if p['request'].get('legacy_pickup'):
+                    raise ActionError('方案已过期，请重新核价。')
+                return p, False
+            if check_enabled and p['action'] != 'create_address' and not self.enabled(p['provider']):
                 raise ActionError('家人尚未开启这项真实订单执行；本次没有提交。')
             if p['action'] == 'create' and self.blocked(p['provider']):
                 raise ActionError(self.blocked(p['provider']))
             p['status'] = 'rechecking'
             self._write(db, owner, p)
+        return p, True
+
+    async def confirm(self, owner, id, version, token, text):
+        p, claimed = self.claim(owner,id,version,token,text)
+        if not claimed:
+            return self.public(p)
+        expired_quote = p['expires_at'] <= time.time()
         adapter = self.adapters.get(p['provider'])
         if adapter is None:
             return self.public(self._update(owner,id,status='failed',error='该服务尚未接好，本次未提交。'))
@@ -217,13 +240,13 @@ class ActionManager:
                 raise
             return self.public(self.get(owner,id))
         if expired_quote or quote['comparison'] != p['comparison'] or quote['amount_cents'] != p['amount_cents']:
-            return self.public(self._update(owner,id,status='needs_review',summary=quote['summary'],
-                amount_cents=quote['amount_cents'],comparison=quote['comparison'],request=quote['request'],
+            return self.public(self._update(owner,id,status='needs_review',summary=normalize_summary(quote['summary']),summary_version=1,
+                amount_cents=quote['amount_cents'],comparison=quote['comparison'],request=quote['request'],request_hash=self.request_hash(quote['request']),
                 version=p['version']+1,confirmation_token=secrets.token_urlsafe(32),expires_at=time.time()+300,
                 error='报价已重新核对，请确认当前内容和总额。' if expired_quote else '费用、规格或接送点有变化，请核对后再次确认。'))
         # Invalidating the token and persisting before the first remote write is
         # essential: timeout/crash cannot turn a later confirmation into a retry.
-        self._update(owner,id,status='submitting',request=quote['request'],confirmation_token=secrets.token_urlsafe(32))
+        self._update(owner,id,status='submitting',request=quote['request'],request_hash=self.request_hash(quote['request']),confirmation_token=secrets.token_urlsafe(32))
         try:
             result = await adapter.execute(p['action'], copy.deepcopy(quote['request']))
             if not isinstance(result, dict) or not result.get('address_id' if p['action']=='create_address' else 'order_id'):

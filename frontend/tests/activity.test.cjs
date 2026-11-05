@@ -5,7 +5,7 @@ const React=require('react');
 const {renderToStaticMarkup}=require('react-dom/server');
 const moduleUnderTest={exports:{}};
 const code=ts.transpileModule(fs.readFileSync(require.resolve('../src/main.tsx'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
-vm.runInNewContext(code,{module:moduleUnderTest,exports:moduleUnderTest.exports,require:name=>{
+require('./load-frontend.cjs')(code,{module:moduleUnderTest,exports:moduleUnderTest.exports,require:name=>{
  if(name==='./CardHeading')return require('./load-card-heading.cjs');
  if(name==='react-dom/client')return{createRoot:()=>({render(){}})};
  if(name==='./payment')return{};

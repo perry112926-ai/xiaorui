@@ -162,10 +162,13 @@ class ContactService:
         except Exception:
             pass  # The text reply and grounded fallback remain usable.
 
-    def has_pending(self, owner, call_id='__any__'):
+    def has_pending_any(self, owner):
         with self.db() as db:
-            if call_id == '__any__':
-                return bool(db.execute("SELECT 1 FROM inbox WHERE owner=? AND status='queued' LIMIT 1", (owner,)).fetchone())
+            return bool(db.execute("SELECT 1 FROM inbox WHERE owner=? AND status='queued' LIMIT 1", (owner,)).fetchone())
+
+    def has_pending_call(self, owner, call_id):
+        # IS deliberately provides NULL-safe equality for ordinary chat (None).
+        with self.db() as db:
             return bool(db.execute("SELECT 1 FROM inbox WHERE owner=? AND status='queued' AND call_id IS ? LIMIT 1", (owner, call_id)).fetchone())
 
     def invalidate_previous(self, owner):
@@ -198,7 +201,7 @@ class ContactService:
             channel = {'call_id':batch[0][4]} if batch[0][4] else {}
             self.emit(owner, {'type': 'started', 'message_id': run, 'message_ids': ids, **channel})
             token = contact_observer.set(lambda event: self.emit(owner, {'message_id': run, **event, **channel})
-                                         if not self.has_pending(owner, batch[0][4]) else None)
+                                         if not self.has_pending_call(owner, batch[0][4]) else None)
             media_token=contact_media.set(None)
             call_token=contact_call.set(batch[0][4])
             reply_token=contact_reply_mode.set('speech' if batch[0][4] or any(r[5]=='speech' for r in batch) else 'text')
@@ -214,7 +217,7 @@ class ContactService:
                 if batch[0][4]:
                     from app.speech import call_card_cue
                     response = {**response, 'speech_text': call_card_cue(response)}
-                stale = self.has_pending(owner, batch[0][4])
+                stale = self.has_pending_call(owner, batch[0][4])
                 if response.get('conversation_reset'):
                     with self.db() as db:
                         db.execute('DELETE FROM events WHERE owner=?', (owner,))

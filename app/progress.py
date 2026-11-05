@@ -1,6 +1,7 @@
 """Human-readable progress from actual host operations, never model guesses."""
 
 TOOL_ACTIVITY = {
+    'fliggy_search_flights':'正在查询飞猪航班和预订入口，尚未订票',
     'mcd_update_cart':'正在统一整理餐品并核对总价，还没有下单',
     'mcd_recommend_meals':'正在为您核对几份单人套餐的图片、搭配和总价',
     'mcd_choose_recommendation':'正在准备这份套餐的最终确认，尚未下单',
@@ -16,10 +17,6 @@ TOOL_ACTIVITY = {
     'mcd_prepare_address': '正在核对新增配送地址，等待您确认',
     'mcd_cart': '正在整理本轮餐品清单，还没有下单',
     'mcd_prepare_cart': '正在核对多件餐品和总价，还没有下单',
-    'search_stores': '正在查麦当劳门店',
-    'recommend_meals': '正在查麦当劳餐品和价格',
-    'choose_meal': '正在核对餐品和价格，还没有下单',
-    'cancel_plan': '正在撤下待确认方案，不会取消已有订单',
     'mcd_search_pickup': '正在查麦当劳到店门店',
     'mcd_delivery_addresses': '正在查您已有的麦当劳配送地址',
     'mcd_delivery_stores': '正在查这个地址可配送的麦当劳门店',

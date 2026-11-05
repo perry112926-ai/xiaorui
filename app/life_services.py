@@ -20,6 +20,7 @@ from jsonschema import validate, ValidationError
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 from app.service_transport import service_http_client
+from app.mcp_payload import extract_payload, PayloadError
 
 ROOT = Path(__file__).resolve().parents[1]
 SPECS = {
@@ -181,18 +182,10 @@ class OfficialMcp:
                 return exc
             if result.isError:
                 raise failure(f'{self.spec["label"]}未返回可确认结果，请检查官方订单，暂不重复提交。')
-            payload = result.structuredContent
-            if payload is None:
-                values = []
-                for block in result.content:
-                    if block.type == 'text':
-                        try:
-                            values.append(json.loads(block.text))
-                        except ValueError:
-                            pass
-                if len(values) != 1:
-                    raise failure('无法识别官方返回结果，请核查，不能推断交易是否成功。')
-                payload = values[0]
+            try:
+                payload = extract_payload(result)
+            except PayloadError:
+                raise failure('无法识别官方返回结果，请核查，不能推断交易是否成功。') from None
             if self.provider == 'luckin':
                 if not isinstance(payload, dict) or payload.get('code') != 0 or payload.get('success') is False or 'data' not in payload:
                     raise failure('瑞幸请求未返回成功，请核查账号和官方订单。')

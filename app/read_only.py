@@ -5,7 +5,7 @@ READ_ONLY = os.environ.get('XIAORUI_READ_ONLY', '').lower() in {'1', 'true', 'ye
 QUERY_TOOLS = frozenset({
     'fliggy_search_flights',
     'amap_search_places','amap_geocode','amap_route','amap_weather','amap_nearby','amap_current_location',
-    'search_stores', 'recommend_meals', 'task_records',
+    'task_records',
     'mcd_search_pickup', 'mcd_delivery_addresses', 'mcd_delivery_stores',
     'mcd_menu', 'mcd_product_detail', 'mcd_orders', 'mcd_order_status',
 })

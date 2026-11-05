@@ -71,7 +71,7 @@ class TaskRecords(Arguments):
         return self
 
 
-SCHEMAS = {**DINING_SCHEMAS, **SERVICE_SCHEMAS, **SCENARIO_SCHEMAS, **AMAP_SCHEMAS, 'personal_profile': (PersonalProfile,
+SCHEMAS = {**SERVICE_SCHEMAS, **SCENARIO_SCHEMAS, **AMAP_SCHEMAS, 'personal_profile': (PersonalProfile,
     '查看、保存或忘记本人长期资料。只有用户明确要求记住长期事实时才set；今天等临时要求不保存。忘记用forget，不能从旧聊天恢复已删除资料。key用home.address或preferences.drinks等稳定英文键，value是用户原意。'),
     'task_records': (TaskRecords,
     '只读查询本人的真实任务台账。list列出近期任务，get按返回的task_id查看详情。只报告实际状态；不执行、重放或取消任务，不能把interrupted说成已恢复完成。')}
@@ -85,8 +85,6 @@ def catalog():
              'enabled': True, 'scope': 'local-profile', 'source': 'skills/core/SKILL.md'},
             {'id': 'core.tasks', 'name': '任务记录', 'tools': ['task_records'],
              'enabled': True, 'scope': 'owner', 'source': 'skills/tasks/SKILL.md'},
-            {'id': 'dining.mcd', 'name': '麦当劳查询与方案', 'tools': list(DINING_SCHEMAS),
-             'enabled': True, 'scope': 'conversation', 'source': 'skills/dining/SKILL.md'},
             {'id': 'life.services', 'name': '瑞幸与滴滴查询', 'tools': list(SERVICE_SCHEMAS),
              'enabled': True, 'scope': 'conversation', 'source': 'skills/services/SKILL.md'},
             *[{'id':f'life.{provider}', 'name':name, 'tools':list(schemas), 'enabled':True,

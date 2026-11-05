@@ -1,12 +1,12 @@
 # 技术架构
 
-单机 Mac、单用户、单进程 Python 服务，React 构建后由 FastAPI 提供；SQLite 保存本地状态。模型与语音调用云端豆包服务，当前不要求 Redis、向量数据库或独立媒体服务器。
+单机 Mac、单用户、单进程 Python 服务，React 构建后由 FastAPI 提供；SQLite 保存本地状态。文本模型通过火山方舟调用已配置模型，语音使用豆包服务，当前不要求 Redis、向量数据库或独立媒体服务器。
 
 ```mermaid
 flowchart TD
   UI[聊天界面：文字 / 语音 / 图片] --> Inbox[持久消息队列与 SSE]
   Inbox --> Host[nanobot 运行时宿主]
-  Host <--> Model[豆包文本模型]
+  Host <--> Model[已配置的方舟文本模型]
   Host <--> State[会话 / 个人资料 / 任务 SQLite]
   Host --> Domains[麦当劳 / 瑞幸 / 滴滴场景]
   Domains --> Query[官方 MCP 查询与核价]
@@ -31,7 +31,7 @@ flowchart TD
 | `app/foundation_store.py` | 稳定个人资料、召回代际、展示／候选与任务执行记录 |
 | `app/skills.py`、`service_skills.py` | 显式注册工具与 Skill，禁止未授权能力旁路 |
 | `app/{mcd,luckin,didi}_scenario.py` | 真实候选、参数校验、核价、具体方案和本人状态查询 |
-| `app/actions.py`、`plans.py` | 共享操作台账及旧麦当劳方案：所有权、版本、有效期、确认、去重与未知状态 |
+| `app/actions.py`、`plans.py` | 单一确认网关与旧接口兼容视图；旧数据幂等迁移，不保留第二套执行状态机 |
 | `app/mcd.py`、`life_services.py` | 官方 MCP 连接、工具发现、实际 schema 校验和业务结果检查 |
 | `app/speech.py`、`voice.py`、`voice_protocol.py` | 口语内容规划、合成、实时识别网关与协议边界 |
 | `app/attachments.py` | 图片解码、缩放、重新编码与浏览器会话隔离 |
@@ -64,3 +64,20 @@ ASR 输入为 16 kHz 单声道 PCM16，按 200 ms 分包；服务端等待结束
 TTS 将官方 MP3 音频块直接转发给原生音频播放器，整段播报一个合成请求，可边接收边播放。POST 准备会话绑定、45 秒有效的一次性票据，GET 消耗票据后输出音频流，正文不进入 URL；旧 POST 完整音频接口保留兼容。停止时移除音频源，断开下载并清理上游。短口语的段落换行不会触发二次改写；复杂回答继续独立生成播报。这仍是 ASR → 文本 Agent → TTS 链路，尚非端到端实时语音模型。准备播报不等于用户完整听到，当前没有播放完成回执。
 
 普通非敏感偏好现由 `app/companion_memory.py` 自动整理，使用原话证据、owner／遗忘代际过滤和 BM25 加相邻消息召回；重要资料仍由本人确认。原话保留365天，临时要求不归档，整理失败降级为原话检索。当前遗忘保守清空整个推断记忆库，尚无主题级删除与可恢复的后台整理队列；主动触发和内容服务仍属规划。实现审计、公开数据结果和限制见[记忆评测报告](docs/research/personal-agent-2026-11-06/assessment.md)。
+
+
+## 审查后的职责边界
+
+`create_app(services=..., services_factory=...)` 在每个应用实例上注入依赖。模块导入只建立路由和惰性引用，不创建数据库或启动调度器；lifespan 负责恢复、启动和关闭。请求上下文隔离不同应用的依赖。旧的命名导入保留为惰性代理，便于兼容已有集成。
+
+前端 `main.tsx` 只挂载应用，`useAppController` 协调副作用。`useChat` 用 reducer 管理消息，`useContact` 负责恢复与 SSE，`usePhone` 管理通话，`useComposer` 管理输入和图片，`useLocation` 管理定位；被动视图在 `components/`。SSE 数据先按 `ContactEvent` 联合类型对应的运行时规则校验，再进入穷举 switch。历史 `plan` 卡片只适配为统一 `ActionCard`，前端不再执行 `/api/plans/*` 交易流程。
+
+模型输入由 `model_views.py` 的逐层、分服务白名单投影。未知字段及容器默认丢弃，已允许的标量字段也不能容纳任意对象。模型不能看到确认令牌、内部请求或报价载荷。语言策略保存在 `app/policies/`，能力目录和执行开关是运行时事实。预算、选择、确认、单次执行和未知状态等约束继续由适配器与网关强制实施。
+
+业务回复经 `factual_replies.py` 从工具事实或操作状态生成；未核实的模型交易措辞不流式发给用户。交易和服务选项的语音直接使用宿主事实，只有普通对话可进行无工具口语改写。`valid()` 是补充内容检查，不承担交易正确性证明。
+
+所有方案的新公开结构使用 `summary_version=1` 与英文 snake_case 字段，中文标签属于展示层。`normalize_summary` 读取旧键但不重写历史审计文件。金额仍为整数分，前后端统一精确格式化。
+
+`PlanStore` 是兼容外观：旧表逐条幂等导入 `actions`，保留 owner、id、未知状态和原记录，并保存到统一网关的绑定。迁移不请求远端、不执行旧授权；提交中断仍进入 unknown，重核价中断进入 expired。`/api/plans` 兼容端点也调用相同 CAS、重核价和执行入口，旧工具不再向模型注册。公开接口保留以免历史客户端失效，可在确认所有调用方完成迁移后再移除。
+
+MCP 的结构解码在 `mcp_payload.py` 复用；各 provider 仍分别验证自己的成功封装、拒绝结果和授权工具目录。`has_pending_any` 与 `has_pending_call` 分别表示所有队列和指定通话队列，SQL 的 `IS` 明确保留 NULL 安全比较语义。

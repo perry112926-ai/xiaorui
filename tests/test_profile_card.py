@@ -125,8 +125,10 @@ class ProfileCardApiTests(unittest.IsolatedAsyncioTestCase):
                     {'action':action,'key':key,'value':'测试替换'},[])
                 self.assertIn('error',result)
         self.assertEqual(self.agent.store.profile()['facts']['home.address'],'测试核对地址')
-        result=await self.agent._tool(session,'a','personal_profile',
-            {'action':'set','key':'preference.drink','value':'测试热饮偏好'},[])
+        session.current_input='请记住我喜欢热饮。'
+        async with session.lock:
+            result=await self.agent._tool(session,'a','personal_profile',
+                {'action':'set','key':'preference.drink','value':'测试热饮偏好'},[])
         self.assertTrue(result['saved'])
 
 

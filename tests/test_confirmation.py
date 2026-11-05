@@ -140,6 +140,7 @@ class ConfirmationRouteTests(unittest.IsolatedAsyncioTestCase):
         with patch('dotenv.dotenv_values', return_value={}), patch('app.plans.PlanStore', return_value=self.store):
             self.api = importlib.import_module('app.main')
         self.gateway = GatewayDouble()
+        self.store.manager._enabled=lambda provider: True
         self.patches = [patch.object(self.api, 'plans', self.store),
                         patch.object(self.api, 'service', self.gateway),
                         patch.object(self.api, 'ORDER_ENABLED', True)]

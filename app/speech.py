@@ -4,6 +4,7 @@ The narrator has no tools. Transaction confirmations/results are composed from
 host facts; other turns can use a bounded model rewrite with a grounded fallback.
 """
 from app.money import format_cents
+from app.summaries import normalize_summary
 import json
 import re
 from decimal import Decimal
@@ -66,16 +67,16 @@ def amount(plan):
 
 
 def confirmation(plan):
-    summary=plan.get('summary',{})
+    summary=normalize_summary(plan.get('summary',{}))
     start='方案有变化，我再跟您核对一下：' if plan.get('status')=='needs_review' else '我先跟您核对一下：'
     if plan.get('action')=='create_address':
         text=start+f"新增麦当劳配送地址：{summary.get('city','')}{summary.get('address','')}，门牌{summary.get('address_detail','')}，联系人{summary.get('contact','')}，电话{summary.get('phone','')}。确认后会保存至麦当劳账号，尚不下单。"
     elif plan.get('action')=='cancel':
         text=start+f"这是取消订单的方案，取消费用{amount(plan)}元。"
-        if summary.get('原因'):
-            text+='原因是'+str(summary['原因'])+'。'
+        if summary.get('reason'):
+            text+='原因是'+str(summary['reason'])+'。'
     elif plan.get('provider')=='didi':
-        text=start+f"从{summary.get('实际上车点','卡片上的上车点')}到{summary.get('实际下车点','卡片上的下车点')}，选的是{summary.get('车型','卡片上的车型')}，预估{amount(plan)}元。实际车费以平台结算为准。"
+        text=start+f"从{summary.get('origin','卡片上的上车点')}到{summary.get('destination','卡片上的下车点')}，选的是{summary.get('vehicle','卡片上的车型')}，预估{amount(plan)}元。实际车费以平台结算为准。"
         text+='确认后会真实叫车，关联账号可能免密扣款。'
     else:
         labels={'product':'商品','product_name':'商品','quantity':'数量','attributes':'规格','choices':'套餐内容',
@@ -118,7 +119,7 @@ def action_speech(plan):
     if state=='cancellation_requested':
         return '取消请求已经提交，还需要核对平台是否取消成功。先别重复操作，我会保留这笔记录。'
     if state=='cancelled':
-        return ('这份待确认方案已取消，没有执行新的交易。' if not plan.get('order')
+        return ('这份待确认方案已取消，没有执行真实交易。' if not plan.get('order')
                 else '平台返回了取消结果，退款和费用还需要以官方订单页面为准。')
     if state in {'expired','superseded'}:
         return '这份旧方案已经不能用了。我们先重新核对当前选择和费用，再决定是否提交。'
@@ -192,12 +193,6 @@ def fallback(data):
     if data['stage']=='order_progress':
         return {'text':progress_speech(data['provider'],data['data']),'source':'grounded','stage':'order_progress'}
     stage=data['stage']
-    if stage=='choose_meal':
-        brief=re.sub(r'\s+',' ',clean(data['screen_answer'])).strip()
-        # Preserve a concise, already grounded personalized recommendation even
-        # when the optional second speech-editing call is unavailable.
-        if 2<=len(brief)<=120 and valid(brief,data) and not re.search(r'(?m)^\s*(?:[-*]\s|\d+[.)、]\s)|[|{}]',data['screen_answer']):
-            return {'text':brief,'source':'brief','stage':stage}
     if stage.startswith('choose_'):
         subject={'choose_vehicle':'车型和预估费用','choose_store':'附近的门店','choose_meal':'套餐和核价结果'}.get(stage,'可选的几项')
         text=f'我查到了{subject}，放在下面了。您可以告诉我想选哪一个，也可以直接点卡片。'
@@ -215,7 +210,11 @@ def fallback(data):
         elif re.search(r'念|读|多少钱|价格|费用|便宜|预算|看不[清见]|不看屏幕',data['user']):
             options=data['choices'][:5] if re.search(r'念|读|看不[清见]|不看屏幕',data['user']) else data['choices'][:2]
             text='我帮您看了一下。'+'；'.join(c['label']+'，'+c['detail'] for c in options)+'。您想选哪一个？'
-        return {'text':text,'source':'fallback','stage':stage}
+        if stage=='choose_meal':
+            preferences='、'.join(str(v) for v in data.get('dining_preferences',{}).values())
+            if preferences:text='您保存的用餐偏好是'+preferences+'。'+text
+            text+='饮料温度还需要核对本次真实选项。'
+        return {'text':text,'source':'grounded','stage':stage}
     raw=data['screen_answer']
     # Paragraph breaks alone don't require another model generation.
     structured=bool(re.search(r'(?m)^\s*(?:[-*]\s|\d+[.)、]\s|#{1,6}\s)|\|',raw))
@@ -316,7 +315,7 @@ class SpeechComposer:
         safe=fallback(data)
         # Critical facts use an explicit host composition; brief conversational
         # replies are already spoken language and need no additional model call.
-        if safe['source'] in {'grounded','brief'}:
+        if data['stage'] != 'conversation' or safe['source'] in {'grounded','brief'}:
             return safe
         if not all(settings.get(key) for key in ('model','key','base')):
             return safe

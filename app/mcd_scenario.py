@@ -485,6 +485,9 @@ class McdScenario:
                 'comparison':{'payload':payload,'amount_cents':amount,'budget_cents':budget,'labels':request['labels'],'fees':fees}}
 
     async def quote(self,action,request):
+        if request.get('legacy_pickup'):
+            from app.legacy_pickup import LegacyPickupAdapter
+            return await LegacyPickupAdapter(self.provider).quote(action,request)
         if action=='create_address':
             payload = NewAddress.model_validate(request).model_dump(exclude_none=True)
             return {'request':payload, 'amount_cents':0, 'comparison':payload,
@@ -533,6 +536,9 @@ class McdScenario:
         return _safe_order(await self._read('query-order', {'orderId':order_id}))
 
     async def execute(self,action,request):
+        if request.get('legacy_pickup'):
+            from app.legacy_pickup import LegacyPickupAdapter
+            return await LegacyPickupAdapter(self.provider).execute(action,request)
         if action=='create_address':
             payload = NewAddress.model_validate(request).model_dump(exclude_none=True)
             async with self.provider._connection() as call:

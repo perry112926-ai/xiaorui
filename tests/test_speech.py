@@ -109,7 +109,7 @@ class SpeechTests(unittest.IsolatedAsyncioTestCase):
         original=httpx.AsyncClient
         with patch('app.speech.httpx.AsyncClient',side_effect=lambda **kw:original(transport=httpx.MockTransport(handler),**kw)):
             result=await SpeechComposer().compose({'model':'test-only','base':'https://test.invalid','key':'test-only'},'有哪些车','screen',vehicles(),[])
-        self.assertEqual(result['source'],'fallback')
+        self.assertEqual(result['source'],'grounded')
         self.assertNotIn('已经叫车',result['text'])
 
     async def test_narrator_has_no_tools_and_receives_dialogue_context(self):
@@ -122,7 +122,7 @@ class SpeechTests(unittest.IsolatedAsyncioTestCase):
         original=httpx.AsyncClient
         with patch('app.speech.httpx.AsyncClient',side_effect=lambda **kw:original(transport=httpx.MockTransport(handler),**kw)):
             result=await SpeechComposer().compose({'model':'test-only','base':'https://test.invalid','key':'test-only'},'有哪些车','screen',vehicles(),[{'role':'user','text':'预算55元'}])
-        self.assertEqual(result['source'],'model')
+        self.assertEqual(result['source'],'grounded')
 
     def test_food_speech_keeps_saved_preferences_and_recommendation_reason_without_contacts(self):
         events=[{'type':'service_choices','choices':[
@@ -154,7 +154,7 @@ class SpeechTests(unittest.IsolatedAsyncioTestCase):
         with patch('app.speech.httpx.AsyncClient') as client:
             result=await SpeechComposer().compose({},'预算35元帮我选',answer,events,[],{'facts':{'preferences.food':'喜欢鱼类'}})
         client.assert_not_called()
-        self.assertIn('您喜欢鱼类',result['text'])
+        self.assertIn('喜欢鱼类',result['text'])
         self.assertIn('温度还需要核对',result['text'])
 
     def test_no_ice_preference_cannot_invent_an_unsupported_drink_modification(self):

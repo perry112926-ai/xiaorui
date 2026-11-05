@@ -60,7 +60,7 @@ class DidiScenarioTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(one['comparison'],two['comparison'])
         self.assertNotEqual(one['request']['estimate_trace_id'],two['request']['estimate_trace_id'])
         self.assertNotEqual(two['comparison'],three['comparison'])
-        self.assertEqual(one['summary']['实际上车点'],'真实上车点')
+        self.assertEqual(one['summary']['origin'],'真实上车点')
         self.provider.call_confirmed.assert_not_awaited()
 
     async def test_unknown_cancellation_fee_does_not_prepare_or_cancel(self):

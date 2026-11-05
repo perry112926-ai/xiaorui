@@ -10,9 +10,7 @@ from decimal import Decimal, InvalidOperation
 from app import read_only
 from pathlib import Path
 import asyncio
-import json
 import os
-import re
 
 from dotenv import dotenv_values
 from jsonschema import ValidationError, validate
@@ -34,31 +32,22 @@ class McdRejectedError(RuntimeError):
     """Explicit business refusal; not a transport timeout or unknown outcome."""
 
 
+from app.mcp_payload import extract_payload, PayloadError
+
+
 def _payload(result):
     if result.isError:
         raise RuntimeError('麦当劳工具返回错误，请稍后重新查询。')
-    structured = result.structuredContent
-    if isinstance(structured, dict) and isinstance(structured.get('success'), bool):
-        values = [structured]
-    else:
-        values = []
-        for block in result.content:
-            if block.type != 'text':
-                continue
-            for match in re.finditer(r'\{\s*"success"\s*:', block.text):
-                try:
-                    item, _ = json.JSONDecoder().raw_decode(block.text[match.start():])
-                except ValueError:
-                    continue
-                if isinstance(item, dict) and isinstance(item.get('success'), bool):
-                    values.append(item)
-    if len(values) != 1:
-        raise RuntimeError('暂时无法识别麦当劳返回结果，请勿重复下单。')
-    if values[0]['success'] is not True:
+    try:
+        value = extract_payload(result, envelope=lambda item:
+            isinstance(item, dict) and isinstance(item.get('success'), bool))
+    except PayloadError:
+        raise RuntimeError('暂时无法识别麦当劳返回结果，请勿重复下单。') from None
+    if value['success'] is not True:
         raise McdRejectedError('麦当劳未接受本次请求，请重新查询可售商品。')
-    if 'data' not in values[0]:
+    if 'data' not in value:
         raise RuntimeError('麦当劳返回结果缺少业务数据。')
-    return values[0]['data']
+    return value['data']
 
 
 def _amount(data):
@@ -170,6 +159,8 @@ class McdService:
         store = self.stores.get(store_code)
         if not store:
             raise ValueError('请先搜索并选择门店。服务重启后需要重新选择。')
+        if store.get('open') is False:
+            raise ValueError('当前门店未营业，请选择营业中的门店。')
         quantity = request.get('quantity', 1)
         if type(quantity) is not int or not 1 <= quantity <= 5:
             raise ValueError('本阶段支持购买 1 至 5 份同款餐品。')

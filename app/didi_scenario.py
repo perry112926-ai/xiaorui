@@ -124,7 +124,7 @@ class DidiScenario:
             else:
                 raise ServiceUnavailable('平台未返回明确取消费，不能保证免费。请到滴滴官方订单页核对取消条件。')
             return {'request':request, 'amount_cents':amount,
-                    'summary':{'操作':'取消滴滴订单','取消费用':f'{format_cents(amount)}元','原因':request['reason']},
+                    'summary':{'action':'取消滴滴订单','cancel_fee':f'{format_cents(amount)}元','reason':request['reason']},
                     'comparison':{'order_id':request['order_id'],'reason':request['reason'],'cancel_fee_cents':amount}}
         if action != 'create':
             raise ServiceUnavailable('不支持这个操作。')
@@ -148,9 +148,9 @@ class DidiScenario:
         request['estimate_trace_id'] = data['traceId']
         comparison = {'route':request['route'], 'product_category':request['product_category'],
                       'vehicle':item['productName'],'amount_cents':amount,'actual_places':{key:place_fingerprint(value) for key,value in actual.items()}}
-        summary = {'操作':'叫滴滴','车型':item['productName'],'预估费用':f'{format_cents(amount)}元',
-                   '实际上车点':actual['from']['name'],'实际下车点':actual['to']['name'],
-                   '支付提醒':'确认后会真实叫车，关联账号可能免密扣款；实际车费以平台结算为准。'}
+        summary = {'action':'叫滴滴','vehicle':item['productName'],'estimated_fee':f'{format_cents(amount)}元',
+                   'origin':actual['from']['name'],'destination':actual['to']['name'],
+                   'payment_note':'确认后会真实叫车，关联账号可能免密扣款；实际车费以平台结算为准。'}
         return {'request':request,'summary':summary,'amount_cents':amount,'comparison':comparison}
 
     async def execute(self, action, request):

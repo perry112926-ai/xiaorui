@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from dotenv import dotenv_values
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
@@ -26,6 +26,7 @@ from app.contact import ContactService
 from app.attachments import ImageStore
 from app.profile_card import ProfileConflict
 from typing import Literal
+from app.runtime import RuntimeSlot, ServiceProxy, current_runtime, default_runtime, build_services
 
 ROOT = Path(__file__).resolve().parents[1]
 settings = dotenv_values(ROOT / '.env')
@@ -33,31 +34,33 @@ ORDER_ENABLED = str(os.environ.get('MCD_ORDER_ENABLED', settings.get('MCD_ORDER_
 
 
 @asynccontextmanager
-async def lifespan(app):
-    plans.recover_interrupted()
-    agent.store.recover_interrupted()
-    agent.actions.recover_interrupted()
-    contact.recover()
-    await scheduler.start()
+async def lifespan(application):
+    token=current_runtime.set(application.state.runtime)
+    dependencies=application.state.runtime.get()
     try:
-        yield
+        dependencies.plans.recover_interrupted()
+        dependencies.agent.store.recover_interrupted()
+        dependencies.agent.actions.recover_interrupted()
+        dependencies.contact.recover()
+        await dependencies.scheduler.start()
+        try:
+            yield
+        finally:
+            await dependencies.contact.close()
+            await dependencies.scheduler.stop()
     finally:
-        await contact.close()
-        await scheduler.stop()
+        current_runtime.reset(token)
 
 
-app = FastAPI(title='小瑞 · 本地生活助手', docs_url=None, redoc_url=None, lifespan=lifespan)
-app.include_router(voice_router)
-app.include_router(settings_router)
-service = McdService()
-plans = PlanStore(ROOT / '.local-data/plans.sqlite3', recover_running=False)
-agent = AgentService(service, plans)
-images = ImageStore(agent.data_dir / 'images')
-contact = ContactService(agent, agent.data_dir / 'contact.sqlite3', images=images)
-scheduler = FoundationScheduler(agent.data_dir / 'scheduler')
+router=APIRouter()
+service=ServiceProxy('service')
+plans=ServiceProxy('plans')
+agent=ServiceProxy('agent')
+images=ServiceProxy('images')
+contact=ServiceProxy('contact')
+scheduler=ServiceProxy('scheduler')
 
 
-@app.middleware('http')
 async def local_boundary(request: Request, call_next):
     host = urlsplit('http://' + request.headers.get('host', '')).hostname
     if host not in {'localhost', '127.0.0.1', '::1'}:
@@ -73,7 +76,11 @@ async def local_boundary(request: Request, call_next):
     session = request.cookies.get('pa_session')
     fresh = not session or len(session) < 32 or len(session) > 128
     request.state.owner = secrets.token_urlsafe(32) if fresh else session
-    response = await call_next(request)
+    token=current_runtime.set(request.app.state.runtime)
+    try:
+        response = await call_next(request)
+    finally:
+        current_runtime.reset(token)
     if fresh:
         response.set_cookie('pa_session', request.state.owner, httponly=True, samesite='strict', max_age=30*86400)
     response.headers['Cache-Control'] = 'no-store'
@@ -81,37 +88,34 @@ async def local_boundary(request: Request, call_next):
     return response
 
 
-@app.exception_handler(PlanError)
 async def plan_error(request, error):
     return JSONResponse({'detail': error.message}, status_code=error.status)
 
 
-@app.exception_handler(AgentError)
 async def agent_error(request, error):
     return JSONResponse({'detail': error.message}, status_code=error.status)
 
 
-@app.exception_handler(ActionError)
 async def action_error(request, error):
     return JSONResponse({'detail':error.message},status_code=error.status)
 
 
-@app.get('/api/actions')
+@router.get('/api/actions')
 async def action_list(request: Request):
     return {'actions':[agent.actions.public(p) for p in agent.actions.list(request.state.owner)]}
 
 
-@app.get('/api/actions/{id}')
+@router.get('/api/actions/{id}')
 async def action_get(id: str, request: Request):
     return {'plan':agent.actions.public(agent.actions.get(request.state.owner,id))}
 
 
-@app.post('/api/actions/{id}/cancel-plan')
+@router.post('/api/actions/{id}/cancel-plan')
 async def action_cancel_local(id: str, request: Request):
     return {'plan':agent.actions.cancel_local(request.state.owner,id)}
 
 
-@app.post('/api/actions/{id}/refresh')
+@router.post('/api/actions/{id}/refresh')
 async def action_refresh(id: str, request: Request):
     return {'plan':await agent.actions.refresh(request.state.owner,id)}
 
@@ -127,7 +131,7 @@ class ChatRequest(Body):
 from app.location import BrowserLocation
 
 
-@app.post('/api/location')
+@router.post('/api/location')
 async def set_location(body: BrowserLocation, request: Request):
     try:
         agent.locations.put(request.state.owner,body)
@@ -137,7 +141,7 @@ async def set_location(body: BrowserLocation, request: Request):
     return {'ok':True,'expires_in':120,'accuracy':body.accuracy}
 
 
-@app.delete('/api/location')
+@router.delete('/api/location')
 async def clear_location(request: Request):
     agent.locations.clear(request.state.owner)
     agent.actions.invalidate_pending(request.state.owner)
@@ -155,38 +159,38 @@ class ImageUpload(Body):
     data_url: str = Field(min_length=20,max_length=10_700_000,strict=True)
 
 
-@app.post('/api/contact/images',status_code=201)
+@router.post('/api/contact/images',status_code=201)
 async def upload_image(body: ImageUpload,request: Request):
     return images.save(request.state.owner,body.data_url)
 
 
-@app.get('/api/contact/images/{image_id}')
+@router.get('/api/contact/images/{image_id}')
 async def read_image(image_id: str,request: Request):
     return FileResponse(images.resolve(request.state.owner,image_id),media_type='image/jpeg',
                         headers={'Content-Security-Policy':"default-src 'none'; sandbox"})
 
 
-@app.post('/api/contact/messages', status_code=202)
+@router.post('/api/contact/messages', status_code=202)
 async def contact_message(body: ContactMessage, request: Request):
     return contact.enqueue(request.state.owner, body.text, body.client_id, body.image_ids, body.call_id, body.reply_mode)
 
 
-@app.post('/api/contact/calls')
+@router.post('/api/contact/calls')
 async def start_contact_call(request: Request):
     return contact.start_call(request.state.owner)
 
 
-@app.post('/api/contact/calls/{call_id}/end')
+@router.post('/api/contact/calls/{call_id}/end')
 async def end_contact_call(call_id: str, request: Request):
     return contact.end_call(request.state.owner, call_id)
 
 
-@app.get('/api/contact/state')
+@router.get('/api/contact/state')
 async def contact_state(request: Request):
     return contact.state(request.state.owner)
 
 
-@app.get('/api/contact/events')
+@router.get('/api/contact/events')
 async def contact_events(request: Request, after: int = 0):
     owner = request.state.owner
     try:
@@ -207,29 +211,29 @@ async def contact_events(request: Request, after: int = 0):
                              headers={'X-Accel-Buffering':'no','Cache-Control':'no-store'})
 
 
-@app.post('/api/chat')
+@router.post('/api/chat')
 async def chat(body: ChatRequest, request: Request):
     if not body.text.strip():
         raise HTTPException(422, '请先说一句话或输入消息。')
     return await agent.chat(request.state.owner, body.text.strip())
 
 
-@app.post('/api/chat/reset')
+@router.post('/api/chat/reset')
 async def reset_chat(body: Body, request: Request):
     raise HTTPException(410, '小瑞保留同一个持续对话，不再提供新对话入口。重要资料请在“我的资料卡”中管理。')
 
 
-@app.get('/api/chat/history')
+@router.get('/api/chat/history')
 async def chat_history(request: Request):
     return agent.history(request.state.owner)
 
 
-@app.get('/api/foundation')
+@router.get('/api/foundation')
 async def foundation_status():
     return {**agent.foundation_status(), 'scheduler': scheduler.status()}
 
 
-@app.get('/api/profile')
+@router.get('/api/profile')
 async def personal_profile():
     return agent.store.profile()
 
@@ -240,12 +244,12 @@ class ProfileCardUpdate(Body):
     confirmation_text: Literal['确认保存资料']
 
 
-@app.get('/api/profile/card')
+@router.get('/api/profile/card')
 async def profile_card():
     return agent.store.profile_card()
 
 
-@app.put('/api/profile/card')
+@router.put('/api/profile/card')
 async def update_profile_card(body: ProfileCardUpdate):
     # Synchronous mutation after these checks cannot interleave with a chat tool.
     if any(session.lock.locked() for session in agent.sessions.values()):
@@ -254,13 +258,6 @@ async def update_profile_card(body: ProfileCardUpdate):
         card = agent.store.save_profile_card(body.version, body.fields)
         agent.sessions.clear()
         agent.actions.invalidate_all_pending()
-        # Legacy pickup proposals must also be reviewed after identity changes.
-        with agent.plans.connect() as db:
-            for row in db.execute('SELECT body FROM plans').fetchall():
-                plan = json.loads(row['body'])
-                if plan['status'] in {'awaiting_confirmation', 'needs_review'}:
-                    plan['status'] = 'superseded'
-                    agent.plans.write(db, plan)
         return card
     except ProfileConflict as exc:
         raise HTTPException(409, str(exc)) from None
@@ -268,7 +265,7 @@ async def update_profile_card(body: ProfileCardUpdate):
         raise HTTPException(422, str(exc)) from None
 
 
-@app.get('/api/tasks')
+@router.get('/api/tasks')
 async def personal_tasks(request: Request):
     return agent.tasks(request.state.owner)
 
@@ -308,7 +305,7 @@ class Confirmation(Body):
     confirmation_text: str
 
 
-@app.post('/api/actions/{id}/prepare-cancel')
+@router.post('/api/actions/{id}/prepare-cancel')
 async def prepare_cancel(id: str, body: Body, request: Request):
     owner=request.state.owner
     session=agent._session(owner)
@@ -327,7 +324,7 @@ async def prepare_cancel(id: str, body: Body, request: Request):
         return {'plan':result['plan'],'speech_text':agent.proposal_text(result['plan'])}
 
 
-@app.post('/api/actions/{id}/confirm')
+@router.post('/api/actions/{id}/confirm')
 async def action_confirm(id: str, body: Confirmation, request: Request):
     session = agent._session(request.state.owner)
     if session.lock.locked():
@@ -349,7 +346,7 @@ async def read_call(fn, *args):
         raise HTTPException(502, '暂时无法连接麦当劳，请检查网络和配置。') from None
 
 
-@app.get('/api/health')
+@router.get('/api/health')
 async def health():
     return {'ok': True, 'order_execution_enabled': ORDER_ENABLED and not read_only.READ_ONLY,
             'read_only': read_only.READ_ONLY,
@@ -357,89 +354,78 @@ async def health():
             'agent_configured': agent.configured}
 
 
-@app.post('/api/mcd/stores')
+@router.post('/api/mcd/stores')
 async def stores(body: StoreSearch):
     return {'stores': await read_call(service.search_stores, body.city, body.keyword)}
 
 
-@app.post('/api/mcd/menu')
+@router.post('/api/mcd/menu')
 async def menu(body: StoreChoice):
     return {'products': await read_call(service.menu, body.store_code)}
 
 
-@app.post('/api/mcd/detail')
+@router.post('/api/mcd/detail')
 async def detail(body: ProductChoice):
     return {'detail': await read_call(service.detail, body.store_code, body.product_code)}
 
 
-@app.post('/api/mcd/recommendations')
+@router.post('/api/mcd/recommendations')
 async def recommendations(body: RecommendationRequest):
     return await read_call(recommend, service, body.store_code, body.budget_cents, body.limit)
 
 
-@app.post('/api/plans')
+@router.post('/api/plans')
 async def new_plan(body: PlanRequest, request: Request):
     prepared = await read_call(service.prepare_plan, body.model_dump())
     return {'plan': plans.create(request.state.owner, prepared)}
 
 
-@app.get('/api/plans/{plan_id}')
+@router.get('/api/plans/{plan_id}')
 async def get_plan(plan_id: str, request: Request):
     return {'plan': plans.get(plan_id, request.state.owner)}
 
 
-@app.post('/api/plans/{plan_id}/cancel')
+@router.post('/api/plans/{plan_id}/cancel')
 async def cancel(plan_id: str, request: Request):
     return {'plan': plans.cancel(plan_id, request.state.owner)}
 
 
-@app.post('/api/plans/{plan_id}/confirm')
+@router.post('/api/plans/{plan_id}/confirm')
 async def confirm(plan_id: str, body: Confirmation, request: Request):
     if body.confirmation_text != '确认下单':
         raise HTTPException(400, '需要明确确认下单。')
     if not ORDER_ENABLED:
         raise HTTPException(409, '当前仅核价和查看方案，真实下单尚未开启。')
-    p, claimed = plans.claim(plan_id, request.state.owner, body.version, body.confirmation_token)
-    if not claimed:
-        return {'plan': plans.public(p)}
-    try:
-        quote = await service.requote(p['request'])
-    except Exception:
-        result = plans.update(plan_id, request.state.owner, status='needs_review',
-                              version=p['version']+1, confirmation_token=secrets.token_urlsafe(32),
-                              error='重新核价失败，尚未下单。请重新生成方案。', expires_at=0)
-        return {'plan': result}
-    if quote['amount_cents'] != p['amount_cents'] or p['request']['takeWayCode'] not in quote['take_way_codes']:
-        if p['request']['takeWayCode'] not in quote['take_way_codes']:
-            return {'plan': plans.update(plan_id, request.state.owner, status='expired', error='取餐方式已变化，请重新生成方案。')}
-        return {'plan': plans.update(plan_id, request.state.owner, status='needs_review',
-                                    amount_cents=quote['amount_cents'], version=p['version']+1,
-                                    confirmation_token=secrets.token_urlsafe(32), expires_at=time.time()+300,
-                                    error='价格已变化，请查看新金额并再次确认。')}
-    plans.update(plan_id, request.state.owner, status='submitting')
-    try:
-        order = await service.create_order(p['request'])
-        if not order.get('order_id'):
-            result = plans.update(plan_id, request.state.owner, status='unknown', error='请求已发送，订单结果待核查，请勿重复下单。')
-        else:
-            # Do not expose raw account responses; a payment URL is not a paid order.
-            result = plans.update(plan_id, request.state.owner, status='created',
-                                  order={'order_id': order['order_id'], 'payment_url': order.get('payment_url')},
-                                  error=None if order.get('payment_url') else '已创建订单，但暂未取得支付入口，请到官方渠道核查。')
-    except McdRejectedError:
-        result = plans.update(plan_id, request.state.owner, status='failed', error='麦当劳未接受订单，未自动重试。')
-    except Exception:
-        result = plans.update(plan_id, request.state.owner, status='unknown', error='订单结果待核查，请勿重复下单。')
-    return {'plan': result}
+    return {'plan':await plans.confirm(service,request.state.owner,plan_id,body.version,
+        body.confirmation_token,body.confirmation_text,enabled=ORDER_ENABLED)}
 
 
 DIST = ROOT / 'frontend/dist'
-app.mount('/assets', StaticFiles(directory=DIST / 'assets', check_dir=False), name='assets')
-app.mount('/mascot', StaticFiles(directory=DIST / 'mascot', check_dir=False), name='mascot')
 
 
-@app.get('/')
+
+@router.get('/')
 async def home():
     if not (DIST / 'index.html').exists():
         raise HTTPException(503, '前端尚未构建，请先运行启动脚本。')
     return FileResponse(DIST / 'index.html')
+
+
+def create_app(*, services=None, services_factory=None):
+    application=FastAPI(title='小瑞 · 本地生活助手',docs_url=None,redoc_url=None,lifespan=lifespan)
+    application.state.runtime=RuntimeSlot(services,services_factory or build_services)
+    application.middleware('http')(local_boundary)
+    for kind,handler in ((PlanError,plan_error),(AgentError,agent_error),(ActionError,action_error)):
+        application.add_exception_handler(kind,handler)
+    application.include_router(voice_router)
+    application.include_router(settings_router)
+    application.include_router(router)
+    application.mount('/assets',StaticFiles(directory=DIST/'assets',check_dir=False),name='assets')
+    application.mount('/mascot',StaticFiles(directory=DIST/'mascot',check_dir=False),name='mascot')
+    return application
+
+
+app=create_app()
+# Direct imports outside a request resolve this app's lazy slot.
+import app.runtime as _runtime_module
+_runtime_module.default_runtime=app.state.runtime

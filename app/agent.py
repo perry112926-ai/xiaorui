@@ -1,5 +1,6 @@
 """Persistent Personal Agent host; nanobot owns the model/tool execution loop."""
 from app.money import format_cents
+from app.summaries import normalize_summary, LABELS
 import asyncio
 import copy
 import hashlib
@@ -20,6 +21,7 @@ from pydantic import ValidationError
 
 from app.foundation_store import FoundationStore
 from app.profile_card import is_critical
+from app.profile_permissions import profile_write_allowed
 from app.nanobot_runtime import build_runtime, data_context, SYSTEM
 from app.plans import PlanError
 from app.skills import SkillRegistry, SCHEMAS, TOOLS, catalog
@@ -37,13 +39,11 @@ from app.latency import tool_scope, terminal_reply, candidate_context, current_w
 from app.speech import SpeechComposer, context as speech_context, fallback as speech_fallback
 
 
-def model_safe(value):
-    if isinstance(value, dict):
-        return {k:model_safe(v) for k,v in value.items() if k not in {
-            'confirmation_token','provider_response','raw','traceId','estimate_trace_id'}}
-    if isinstance(value, list):
-        return [model_safe(v) for v in value]
-    return value
+from app.model_views import project_result, project_services, project_plans
+from app.factual_replies import business_turn, business_reply
+
+# Compatibility name for callers that previously used the blacklist sanitizer.
+model_safe = project_result
 
 
 def choice_cards(result):
@@ -84,12 +84,20 @@ def choice_cards(result):
                 product_fields.update(recommendation_id=item['recommendation_id'],price_kind='quote',contents=item.get('choices',[]),fee_breakdown=item.get('fee_breakdown',''))
                 if 'price_yuan' in product_fields:
                     detail=f'本次核价 {product_fields["price_yuan"]} 元；搭配：'+ '、'.join(item.get('choices',[]))
-            cards.append({**product_fields,'label':str(name),'detail':detail,'image':item.get('image'),
+            cards.append({**product_fields,**({'available':item.get('open') is not False} if key=='stores' else {}),'label':str(name),'detail':detail,'image':item.get('image'),
                 'prompt':f'选择第{number}份推荐{"餐品" if item.get("meal_type")=="single" else "套餐"}：{name}。' if item.get('recommendation_id') else f'选择第{number}个{label}：{name}。请继续给我核对，先不要执行交易。'})
         return cards
     return []
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def external_request_block(provider):
+    path=ROOT/'.local-data/payment-probe'/(provider+'.json')
+    if not path.exists():return False
+    try:return json.loads(path.read_text()).get('status') in {'unknown','submitting'}
+    except (ValueError,OSError):return True
+
 
 
 class AgentError(Exception):
@@ -108,6 +116,9 @@ class Session:
     services: dict = field(default_factory=dict)
     speech_turn: dict | None = None
     defer_speech: bool = False
+    tool_facts: list = field(default_factory=list)
+    model_used: bool = False
+    current_input: str = ''
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     touched: float = field(default_factory=time.monotonic)
 
@@ -128,16 +139,9 @@ class AgentService:
         self.skills = SkillRegistry(service, plans)
         self.speech = SpeechComposer()
         self.life_skills = LifeSkills()
-        def external_block(provider):
-            path = ROOT / '.local-data/payment-probe' / (provider+'.json')
-            if not path.exists():
-                return False
-            try:
-                return json.loads(path.read_text()).get('status') in {'unknown','submitting'}
-            except (ValueError,OSError):
-                return True
         self.actions = ActionManager(self.data_dir / 'actions.sqlite3',
-                                     external_blocks=external_block if data_dir is None else None)
+                                     external_blocks=external_request_block if data_dir is None else None)
+        self.plans.bind_actions(self.actions)
         self.locations = LocationStore()
         self.amap = Amap(location_provider=self.locations.get)
         self.scenarios = {
@@ -230,7 +234,8 @@ class AgentService:
         return {'runtime': 'nanobot', 'runtime_version': '0.4.0',
                 'amap':{'configured':amap_configured(),'query_only':True},
                 'profile_id': self.store.PROFILE_ID, 'session_storage': 'persistent',
-                'skills': catalog(), 'tools': list(SCHEMAS),
+                'skills': [{**entry,'tools':[n for n in entry['tools'] if not read_only.READ_ONLY or n in read_only.QUERY_TOOLS]} for entry in catalog()],
+                'tools': sorted(set(SCHEMAS)&read_only.QUERY_TOOLS if read_only.READ_ONLY else SCHEMAS),
                 'business_expansion': 'beijing-luckin-mcd-didi',
                 'services': {p:{**s,'order_execution_enabled':self.actions.enabled(p),
                                   'unresolved_request_block':bool(self.actions.blocked(p))}
@@ -248,10 +253,12 @@ class AgentService:
 
     async def _tool(self, session, owner, name, arguments, events):
         if name == 'fliggy_search_flights':
-            # The flight adapter already exposes only its explicit public contract.
-            result = await self.life_skills.dispatch(session, name, arguments)
+            result = project_result(await self.life_skills.dispatch(session, name, arguments),name)
             events.append({'type':'flight_result','data':result})
             return result
+        return project_result(await self._dispatch_tool(session, owner, name, arguments, events), name)
+
+    async def _dispatch_tool(self, session, owner, name, arguments, events):
         if read_only.READ_ONLY and name not in read_only.QUERY_TOOLS:
             return {'error': read_only.MESSAGE}
         if name in AMAP_SCHEMAS:
@@ -263,11 +270,11 @@ class AgentService:
             if name.startswith('mcd_') and name in read_only.QUERY_TOOLS:
                 events.append({'type': 'query_result', 'provider': 'mcd', 'tool': name,
                                'success': isinstance(result, dict) and 'error' not in result,
-                               'source': 'https://open.mcd.cn/mcp', 'data': model_safe(result)})
+                               'source': 'https://open.mcd.cn/mcp', 'data': project_result(result,name)})
             cards=choice_cards(result)
             if cards or result.get('preflighted'):
                 events.append({'type':'service_choices','choices':cards})
-            return model_safe(result)
+            return project_result(result,name)
         if name in SERVICE_SCHEMAS:
             return await self.life_skills.dispatch(session, name, arguments)
         if name == 'task_records':
@@ -290,6 +297,8 @@ class AgentService:
                 return self.store.model_profile()
             if is_critical(args.key):
                 return {'error': '家庭住址、本人和联系人电话等重要资料，请在右上角“我的资料卡”中填写、核对并确认保存。聊天不能自动修改或删除这些资料。'}
+            if not session.lock.locked() or not profile_write_allowed(session.current_input,args.action):
+                return {'error':'这次没有收到明确的资料修改要求。要长期保存请说“请记住……”，要删除请说“请忘记……”。'}
             if args.action == 'set':
                 self.store.set_fact(args.key, args.value)
                 profile = self.store.model_profile()
@@ -326,6 +335,7 @@ class AgentService:
         if boundary:
             trace.append({'type':'host.amap_capability_boundary'})
             return boundary
+        grounded_business = business_turn(text, session.services)
         weather_reports=[]
         terminal_replies=[]
         flight_results=[]
@@ -341,6 +351,8 @@ class AgentService:
             terminal_replies.append(terminal_reply(name, result, text))
             if name == 'fliggy_search_flights':
                 flight_results.append(result)
+            if name.startswith(('mcd_','didi_','luckin_')):
+                session.tool_facts.append((name, result))
             self.store.save_session(owner, session.snapshot())
             if isinstance(result, dict) and 'error' in result:
                 trace.append({'type': 'tool.error', 'name': name})
@@ -365,11 +377,14 @@ class AgentService:
         async def context(request):
             return [data_context('conversation_channel', {'mode':'phone' if contact_call.get() else 'chat',
                     'guidance':'正在实时电话通话。像真人打电话一样简短承接用户的话，默认一两句短口语。缺资料时只问当前最必要的一项，不先罗列后续还要提供的多项资料。对方说没听清、不会操作或让你一句一句说时，减少信息量，一步一步引导，不声称已经调整硬件音量或语速。主动问一个推进当前事情所必需的问题，不重复已知条件。需要选择时发真实卡片，并说我给您发了卡片，选好告诉我。不要假设用户正在看屏幕；可语音解释选项。通话不改变真实交易确认规则。' if contact_call.get() else '普通消息聊天。自然承接上下文，必要时主动问一个问题，不机械追加问句。'}),
+                    data_context('capabilities', {'tools':sorted(settings['tool_names']),
+                        'read_only':read_only.READ_ONLY,'execution_enabled':{p:self.actions.enabled(p) and not read_only.READ_ONLY for p in ('mcd','didi','luckin')},
+                        'dining_provider':'mcd','payment_tool':False,'scheduled_notifications':False}),
                     data_context('capability_policy', {'read_only': read_only.READ_ONLY, 'message': read_only.MESSAGE if read_only.READ_ONLY else '依实际工具能力执行'}),
                     data_context('canonical_profile', self.store.model_profile()),
                     data_context('companion_memory', self.memory.recall(owner, session.forget_epoch, text)),
-                    data_context('service_candidates', model_safe(candidate_context(session.services))),
-                    data_context('recent_actions', model_safe([self.actions.public(p) for p in self.actions.list(owner)[:8]])),
+                    data_context('service_candidates', project_services(candidate_context(session.services))),
+                    data_context('recent_actions', project_plans([self.actions.public(p) for p in self.actions.list(owner)[:8]])),
                     data_context('current_candidates', {
                         'stores': list(session.stores.values()),
                         'meals': [{'index': i+1, 'name': m['name'], 'amount_cents': m['amount_cents']}
@@ -381,11 +396,14 @@ class AgentService:
         key = f'xiaorui:{owner_key}:{session.conversation_id}:e{session.forget_epoch}'
         settings = {**self._config(), 'tool_names': tool_scope(text, session.services, SCHEMAS),
                     'terminal_replies': lambda: terminal_replies, 'observe': trace.append}
+        if read_only.READ_ONLY:
+            settings['tool_names'] &= read_only.QUERY_TOOLS
         if (not contact_media.get()
                 and not self.actions.pending(owner)
                 and lightweight_chat(text)):
-            settings = {**settings, 'lightweight_chat': True}
+            settings = {**settings, 'lightweight_chat': True, 'tool_names':set()}
             trace.append({'type': 'host.lightweight_chat'})
+        session.model_used = True
         bot = build_runtime(settings, self.data_dir / 'runtime', dispatch, context)
         result = None
         started = time.monotonic()
@@ -395,11 +413,12 @@ class AgentService:
             media_kwargs = {'media': contact_media.get()} if contact_media.get() else {}
             async for event in bot.stream(text, session_key=key, **media_kwargs):
                 if event.type == 'text.delta':
-                    if first_text:
+                    if first_text and not grounded_business:
                         first_text = False
                         trace.append({'type': 'timing', 'stage': 'first_text',
                                       'elapsed_ms': round((time.monotonic() - started) * 1000)})
-                    notify({'type': 'delta', 'text': event.delta})
+                    if not grounded_business:
+                        notify({'type': 'delta', 'text': event.delta})
                 if event.type in {'run.started', 'tool.started', 'tool.completed', 'tool.failed', 'run.completed'}:
                     trace.append({'type': event.type, **({'name': event.name} if event.name else {})})
                 if event.type == 'run.completed':
@@ -419,6 +438,14 @@ class AgentService:
             return answer
         if not isinstance(result.content, str) or not result.content.strip():
             raise AgentError('小瑞暂时没有生成回复，请重试。')
+        if grounded_business or session.tool_facts:
+            answer=business_reply(text, session.services, session.tool_facts, events, self.store.model_profile())
+            notify({'type':'progress','stage':'facts','text':'已核对真实结果，正在显示'})
+            if grounded_business:
+                trace.append({'type':'timing','stage':'first_text','elapsed_ms':round((time.monotonic()-started)*1000)})
+            trace.append({'type':'timing','stage':'speech_composition','elapsed_ms':0})
+            notify({'type':'delta','text':answer})
+            return answer
         notify({'type': 'progress', 'stage': 'narration', 'text': '回复已生成，正在整理成简短的话'})
         started = time.monotonic()
         if contact_reply_mode.get()=='text':
@@ -438,6 +465,10 @@ class AgentService:
         ready=[e for e in events if e.get('type')=='service_choices' and any(c.get('recommendation_id') for c in e.get('choices',[]))]
         if ready:
             events=[e for e in events if e.get('type')!='service_choices' or e is ready[-1]]
+        if (session.model_used and business_turn(text, session.services)) or session.tool_facts or any(e.get('type') in {'plan','action_plan'} for e in events):
+            answer = business_reply(text, session.services, session.tool_facts, events, self.store.model_profile())
+            session.speech_turn = {'text':answer,'source':'grounded','stage':'transaction' if any(e.get('type') in {'plan','action_plan'} for e in events) else 'business'}
+            session.defer_speech = False
         spoken = session.speech_turn or speech_fallback(speech_context(text, answer, events, session.display, self.store.model_profile()))
         if any(event.get('type') in {'plan','action_plan'} for event in events):
             spoken = speech_fallback(speech_context(text, answer, events, session.display, self.store.model_profile()))
@@ -502,9 +533,12 @@ class AgentService:
         if session.lock.locked():
             raise AgentError('小瑞正在回复，请稍等。', 409)
         async with session.lock:
+            session.current_input = text.strip()
             events, trace = [], []
             session.speech_turn = None
             session.defer_speech = False
+            session.tool_facts = []
+            session.model_used = False
             initial_conversation = session.conversation_id
             task_id = self.store.start_task(owner, session.conversation_id, text)
             try:
@@ -558,7 +592,7 @@ class AgentService:
                     status='failed'
                 memory_status = await self.memory.learn(owner, session.forget_epoch, text, self._config())
                 trace.append({'type': 'memory.learn', 'status': memory_status})
-                self.store.finish_task(task_id, status, result={'text': answer, 'trace': trace})
+                self.store.finish_task(task_id, status, result={'text': response['text'], 'trace': trace})
                 return response
             except asyncio.CancelledError:
                 self.store.finish_task(task_id, 'interrupted', error='本次任务中断，未自动重试。')
@@ -575,12 +609,10 @@ class AgentService:
 
     @staticmethod
     def proposal_text(plan):
-        labels={'city':'城市','contact':'联系人','phone':'联系电话','privacy':'信息用途','store':'门店','product':'商品','quantity':'数量','fulfillment':'取餐方式',
-                'phone_tail':'收餐电话尾号','address':'地址','address_detail':'门牌','choices':'套餐内容','attributes':'规格',
-                'tableware':'餐具','remark':'给商家的备注','fee_breakdown':'其中'}
+        labels=LABELS
         parts=[]
-        for key,value in plan['summary'].items():
-            if key in {'预估费用','取消费用'}:
+        for key,value in normalize_summary(plan['summary']).items():
+            if key in {'estimated_fee','cancel_fee'}:
                 continue
             label=labels.get(key) or (key if key and '\u4e00' <= key[0] <= '\u9fff' else None)
             if not label or value in (None,'',[]):
