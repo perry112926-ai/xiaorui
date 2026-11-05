@@ -3,6 +3,7 @@
 The narrator has no tools. Transaction confirmations/results are composed from
 host facts; other turns can use a bounded model rewrite with a grounded fallback.
 """
+from app.money import format_cents
 import json
 import re
 from decimal import Decimal
@@ -61,7 +62,7 @@ def flattened(value):
 
 
 def amount(plan):
-    return f"{Decimal(str(plan['amount_cents']))/100:.2f}".rstrip('0').rstrip('.')
+    return format_cents(plan['amount_cents']).rstrip('0').rstrip('.')
 
 
 def confirmation(plan):
@@ -165,7 +166,7 @@ def context(user,answer,events,history,profile=None):
             choices=[{'label':str(c.get('name','')),'detail':str(c.get('address',''))} for c in event.get('stores',[])[:5]]
             stage='choose_store'
         elif event.get('type')=='meals':
-            choices=[{'label':str(c.get('name','')),'detail':f"核价{Decimal(str(c.get('amount_cents',0)))/100:.2f}元"} for c in event.get('meals',[])[:3]]
+            choices=[{'label':str(c.get('name','')),'detail':f"核价{format_cents(c.get('amount_cents',0))}元"} for c in event.get('meals',[])[:3]]
             stage='choose_meal'
     if not choices:
         stage='conversation'

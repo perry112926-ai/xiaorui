@@ -12,7 +12,7 @@ vm.runInNewContext(code,{module:moduleUnderTest,exports:moduleUnderTest.exports,
  if(name==='./useVoice'||name==='./ProfileCard'||name==='./location')return{};
  if(name==='./ActionCard'||name==='./Companion'||name==='./SettingsDialog'||name==='./HoldToTalk')return{};
  if(name.endsWith('.css'))return{};
- return require(name);
+ return name==='./money'?require('./load-money.cjs'):require(name);
 },document:{getElementById:()=>({})}});
 const {MessageProgress}=moduleUnderTest.exports;
 const render=props=>renderToStaticMarkup(React.createElement(MessageProgress,props));

@@ -3,6 +3,7 @@
 Model tools can prepare, inspect and query. Only the host transaction manager
 may call execute; no model tool submits an order or cancels a remote order.
 """
+from app.money import format_cents
 import copy
 import re
 from decimal import Decimal
@@ -476,8 +477,8 @@ class McdScenario:
             value=Decimal(str(data[key]))
             if not value.is_finite() or value<0 or value!=value.to_integral_value():
                 raise ValueError('官方费用分项格式未知，不能准备订单。')
-            fee_parts.append(f'{label} {value/100:.2f} 元')
-        summary={**request['labels'],'amount_yuan':f'{amount/100:.2f}','fees':fees,
+            fee_parts.append(f'{label} {format_cents(int(value))} 元')
+        summary={**request['labels'],'amount_yuan':format_cents(amount),'fees':fees,
                  'fee_breakdown':'；'.join(fee_parts),
                  'fee_note':'总额以官方核价为准；未返回的费用分项不视为零。', 'payment':'创建后需官方渠道付款'}
         return {'request':copy.deepcopy(request),'summary':summary,'amount_cents':amount,
@@ -524,7 +525,7 @@ class McdScenario:
             fee=Decimal(str(detail['cancelFee']))*100
             if not fee.is_finite() or fee<0 or fee!=fee.to_integral_value():raise ValueError('取消费用格式未知。')
             comparison={'order_id':request['order_id'],'cancel_fee_cents':int(fee),'status':detail.get('status') or detail.get('orderStatus')}
-            return {'request':request,'summary':{'action':'取消麦当劳订单','cancel_fee_yuan':str(fee/100)},
+            return {'request':request,'summary':{'action':'取消麦当劳订单','cancel_fee_yuan':format_cents(int(fee))},
                     'amount_cents':int(fee),'comparison':comparison}
         raise ValueError('不支持的交易动作。')
 

@@ -1,3 +1,4 @@
+import {formatCents} from './money';
 import React,{useEffect,useRef,useState} from 'react';
 import {openOfficialPayment} from './payment';
 
@@ -64,7 +65,7 @@ export function ActionCard({plan,active,speak,onChange,onPrepared}:{plan:ActionP
    const label=names[key]||(/^[\u4e00-\u9fff]/.test(key)?key:'');const text=details(value);
    return label&&text?<div key={key}><dt>{label}</dt><dd>{text}</dd></div>:null;
   })}</dl>
-  {plan.action!=='create_address'&&<div className="total"><span>{plan.action==='cancel'?'取消费用':plan.provider==='didi'?'本次预估费用':'本次总价'}</span><strong>¥{(plan.amount_cents/100).toFixed(2)}</strong></div>}
+  {plan.action!=='create_address'&&<div className="total"><span>{plan.action==='cancel'?'取消费用':plan.provider==='didi'?'本次预估费用':'本次总价'}</span><strong>¥{formatCents(plan.amount_cents)}</strong></div>}
   {plan.provider==='didi'&&plan.action==='create'&&review&&<p className="note">确认后会真实叫车，关联账号可能免密扣款。请核对实际接送点，最终车费以平台为准。</p>}
   {plan.error&&<p className="note">{plan.error}</p>}
   {review&&!plan.execution_enabled&&<p className="note">家人尚未开启这项真实订单执行。</p>}

@@ -13,12 +13,9 @@ elif [ -x /opt/homebrew/bin/uv ]; then
 elif [ -x "$project_root/.local-data/tools/uv" ]; then
   uv_command="$project_root/.local-data/tools/uv"
 else
-  echo "首次启动：下载 uv 环境管理工具到项目目录。"
-  curl --fail --location --proto '=https' --tlsv1.2 \
-    https://astral.sh/uv/install.sh -o .local-data/install-uv.sh
-  UV_INSTALL_DIR="$project_root/.local-data/tools" UV_NO_MODIFY_PATH=1 \
-    sh .local-data/install-uv.sh
-  uv_command="$project_root/.local-data/tools/uv"
+  echo "请先安装 uv，再双击启动。可由家人运行 brew install uv。"
+  echo "安装说明：https://docs.astral.sh/uv/getting-started/installation/"
+  exit 1
 fi
 
 if [ ! -f .env ]; then

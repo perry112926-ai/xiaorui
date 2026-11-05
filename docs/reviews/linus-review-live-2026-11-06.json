@@ -1,0 +1,166 @@
+{
+  "scope": "review-remediation-real-interface-check",
+  "transactions_attempted": 0,
+  "real_quote_verified": false,
+  "limitation": "Queried public pickup candidates are closed; quote setup stopped before calculation.",
+  "attempts": [
+    {
+      "model": "deepseek-v4-1-flash-261017",
+      "business_writes": false,
+      "hardware_voice_tested": false,
+      "turns": [
+        {
+          "scenario": "chat",
+          "seconds": 1.766,
+          "answer": "一个人在家是容易闷，我陪您聊会儿。您今天在家都做了些什么呀？",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 1527
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1674,
+              "input_chars": 1444,
+              "tool_count": 0
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 1703
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 4
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": false
+        },
+        {
+          "scenario": "weather",
+          "seconds": 1.297,
+          "answer": "高德官方天气：北京市，晴，6℃。高德报告时间：2026-11-06 01:03:41。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "amap_weather",
+              "elapsed_ms": 1289
+            },
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 1290
+            }
+          ],
+          "ok": true,
+          "model_requests": 0,
+          "grounded": false
+        }
+      ],
+      "menu_setup_error": "StopIteration",
+      "http": [
+        {
+          "reply_mode": "text",
+          "ok": true,
+          "seconds": 1.51,
+          "answer": "一个人在家是容易闷，我陪您聊会儿。您今天在家都做了些什么呀？",
+          "speech_text": "一个人在家是容易闷，我陪您聊会儿。您今天在家都做了些什么呀？"
+        },
+        {
+          "reply_mode": "speech",
+          "ok": true,
+          "seconds": 1.367,
+          "answer": "高德官方天气：北京市，晴，6℃。高德报告时间：2026-11-06 01:03:41。",
+          "speech_text": "高德官方天气：北京市，晴，6℃。高德报告时间：2026-11-06 01:03:41。"
+        }
+      ],
+      "all_completed": false,
+      "within_8_seconds": false
+    },
+    {
+      "model": "deepseek-v4-1-flash-261017",
+      "business_writes": false,
+      "hardware_voice_tested": false,
+      "turns": [
+        {
+          "scenario": "chat",
+          "seconds": 1.609,
+          "answer": "好呀，我陪您聊。一个人在家闷得慌，今天都做了些什么呀？",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 1358
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1516,
+              "input_chars": 1444,
+              "tool_count": 0
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 1544
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 3
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": false
+        },
+        {
+          "scenario": "weather",
+          "seconds": 1.237,
+          "answer": "高德官方天气：北京市，晴，6℃。高德报告时间：2026-11-06 01:03:41。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "amap_weather",
+              "elapsed_ms": 1229
+            },
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 1230
+            }
+          ],
+          "ok": true,
+          "model_requests": 0,
+          "grounded": false
+        }
+      ],
+      "menu_setup_error": "StopIteration",
+      "http": [
+        {
+          "reply_mode": "text",
+          "ok": true,
+          "seconds": 1.558,
+          "answer": "一个人在家闷得慌，我陪您聊会儿。今天在家都忙了些什么呀？",
+          "speech_text": "一个人在家闷得慌，我陪您聊会儿。今天在家都忙了些什么呀？"
+        },
+        {
+          "reply_mode": "speech",
+          "ok": true,
+          "seconds": 1.423,
+          "answer": "高德官方天气：北京市，晴，6℃。高德报告时间：2026-11-06 01:03:41。",
+          "speech_text": "高德官方天气：北京市，晴，6℃。高德报告时间：2026-11-06 01:03:41。"
+        }
+      ],
+      "all_completed": false,
+      "within_8_seconds": false
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 """Preflighted single-person meals; selecting a card only prepares a proposal."""
+from app.money import format_cents
 import copy
 import re
 import secrets
@@ -59,7 +60,7 @@ def default_item(product, detail, args):
 
 def public_recommendations(state):
     return [{'index':i+1,'meal_type':r.get('meal_type','meal'), 'recommendation_id':r['id'], 'name':r['name']+(f" × {r['request']['labels']['quantity']}" if r['request']['labels']['quantity']>1 else ''), 'image':r['image'],
-             'menu_price_yuan':r.get('menu_price_yuan'), 'quoted_price_yuan':f"{r['quote']['amount_cents']/100:.2f}",
+             'menu_price_yuan':r.get('menu_price_yuan'), 'quoted_price_yuan':format_cents(r['quote']['amount_cents']),
              'choices':r['request']['labels']['choices'],'fee_breakdown':r.get('fee_breakdown',''),
              'rounds':[{'id':str(row['id']),'name':row.get('name',''),'choices':[{'code':str(c['code']),'name':c.get('name','')} for c in row.get('choices',[])[:50]]} for row in r['detail'].get('rounds',[])], 'fulfillment':r['request']['labels']['fulfillment']}
             for i,r in enumerate(state.get('recommended_meals',[]))]
@@ -208,7 +209,7 @@ async def choose(scenario,state,owner,id,events,overrides=None,need_tableware=No
         if not result['products']:result['error']=str(exc)
         return result
     if quote['amount_cents']!=meal['quote']['amount_cents']:
-        quote['summary']['报价变化']=f"推荐时 {meal['quote']['amount_cents']/100:.2f} 元，现在 {quote['amount_cents']/100:.2f} 元，请核对新总价。"
+        quote['summary']['报价变化']=f"推荐时 {format_cents(meal['quote']['amount_cents'])} 元，现在 {format_cents(quote['amount_cents'])} 元，请核对新总价。"
     plan=scenario.transactions.prepare(owner,provider='mcd',action='create',request=quote['request'],quote=quote)
     selected=quote['request']['payload']['items'][0]
     state['cart']=[{'product':copy.deepcopy(meal['product']),'quantity':selected['quantity'],

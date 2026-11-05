@@ -1,4 +1,5 @@
 """Persistent Personal Agent host; nanobot owns the model/tool execution loop."""
+from app.money import format_cents
 import asyncio
 import copy
 import hashlib
@@ -567,7 +568,7 @@ class AgentService:
             parts.append(f'{label}：{str(value).rstrip("。；; ")}')
         heading='新增配送地址' if plan['action']=='create_address' else '取消方案' if plan['action']=='cancel' else '出行方案' if plan['provider']=='didi' else '点餐方案'
         parts=parts[:10]
-        answer=f'{heading}，'+ '；'.join(parts)+f'。本次{"预估" if plan["provider"]=="didi" else ""}费用 {plan["amount_cents"]/100:.2f} 元。'
+        answer=f'{heading}，'+ '；'.join(parts)+f'。本次{"预估" if plan["provider"]=="didi" else ""}费用 {format_cents(plan['amount_cents'])} 元。'
         if plan['execution_enabled']:
             answer+=f'请核对，确定后说“{plan["confirmation_text"]}”。'
         else:

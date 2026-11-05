@@ -1,5 +1,6 @@
 """Budget-filtered self-pickup recommendations from real, freshly quoted meals."""
 from decimal import Decimal, InvalidOperation
+from app.money import format_cents
 import asyncio
 
 
@@ -94,7 +95,7 @@ async def recommend(service, store_code, budget_cents=3500, limit=3):
     if not recommendations and failed_requests:
         raise RuntimeError('套餐查询或核价未完成，请稍后重试。')
     if recommendations:
-        parts = [f'{chr(65+i)}，{r["name"]}，{r["amount_cents"]/100:.2f}元'
+        parts = [f'{chr(65+i)}，{r["name"]}，{format_cents(r['amount_cents'])}元'
                  for i, r in enumerate(recommendations)]
         cheapest = min(range(len(recommendations)), key=lambda i: recommendations[i]['amount_cents'])
         speech = ('这次找到' + str(len(recommendations)) + '份可到店自取的套餐。'
