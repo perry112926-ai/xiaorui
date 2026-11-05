@@ -1,0 +1,461 @@
+{
+  "passed": true,
+  "checks": {
+    "expected_answers": true,
+    "forgotten_not_recalled": true,
+    "unrelated_preference_preserved": true,
+    "automatic_save_not_reasked": true,
+    "no_receipt_prefix": true,
+    "no_external_tool_executed": true
+  },
+  "blocked_tool_attempts": [],
+  "turns": [
+    {
+      "input": "今天我决定以后最喜欢的戏曲是京剧。",
+      "answer": "京剧好，唱腔有味道，越听越有滋味。以后想听戏、找戏票，跟我说一声就行。",
+      "trace": [
+        {
+          "type": "run.started"
+        },
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 1311
+        },
+        {
+          "type": "timing",
+          "stage": "model_request",
+          "elapsed_ms": 1529,
+          "input_chars": 3285,
+          "tool_count": 43
+        },
+        {
+          "type": "run.completed"
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 1587
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 2
+        },
+        {
+          "type": "memory.learn",
+          "status": "curated"
+        }
+      ],
+      "expected": "京剧",
+      "expected_present": true,
+      "preferences": [
+        {
+          "key": "favorite_opera",
+          "value": "京剧",
+          "evidence": "以后最喜欢的戏曲是京剧",
+          "episode": 1
+        }
+      ]
+    },
+    {
+      "input": "请不要忘记我喜欢京剧。",
+      "answer": "普通喜好会自动整理，无需重复保存。本次没有改动已确认资料。",
+      "trace": [
+        {
+          "type": "run.started"
+        },
+        {
+          "type": "timing",
+          "stage": "model_request",
+          "elapsed_ms": 1029,
+          "input_chars": 3585,
+          "tool_count": 43
+        },
+        {
+          "type": "timing",
+          "stage": "tool",
+          "name": "personal_profile",
+          "elapsed_ms": 1
+        },
+        {
+          "type": "tool.error",
+          "name": "personal_profile"
+        },
+        {
+          "type": "tool.started",
+          "name": "personal_profile"
+        },
+        {
+          "type": "tool.failed",
+          "name": "personal_profile"
+        },
+        {
+          "type": "host.grounded_reply"
+        },
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 1069
+        },
+        {
+          "type": "run.completed"
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 1080
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 0
+        },
+        {
+          "type": "memory.learn",
+          "status": "not_retained"
+        }
+      ],
+      "expected": null,
+      "expected_present": true,
+      "preferences": [
+        {
+          "key": "favorite_opera",
+          "value": "京剧",
+          "evidence": "以后最喜欢的戏曲是京剧",
+          "episode": 1
+        }
+      ]
+    },
+    {
+      "input": "我喜欢哪种戏曲？",
+      "answer": "您说过最喜欢京剧。",
+      "trace": [
+        {
+          "type": "run.started"
+        },
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 991
+        },
+        {
+          "type": "timing",
+          "stage": "model_request",
+          "elapsed_ms": 1000,
+          "input_chars": 3761,
+          "tool_count": 43
+        },
+        {
+          "type": "run.completed"
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 1034
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 1
+        },
+        {
+          "type": "memory.learn",
+          "status": "archive_only"
+        }
+      ],
+      "expected": "京剧",
+      "expected_present": true,
+      "preferences": [
+        {
+          "key": "favorite_opera",
+          "value": "京剧",
+          "evidence": "以后最喜欢的戏曲是京剧",
+          "episode": 1
+        }
+      ]
+    },
+    {
+      "input": "我喜欢的饮品是热茶。",
+      "answer": "热茶好，暖胃又舒服。以后想喝的时候，我帮您留意着。",
+      "trace": [
+        {
+          "type": "run.started"
+        },
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 957
+        },
+        {
+          "type": "timing",
+          "stage": "model_request",
+          "elapsed_ms": 1137,
+          "input_chars": 3920,
+          "tool_count": 43
+        },
+        {
+          "type": "run.completed"
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 1171
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 1
+        },
+        {
+          "type": "memory.learn",
+          "status": "curated"
+        }
+      ],
+      "expected": "热茶",
+      "expected_present": true,
+      "preferences": [
+        {
+          "key": "favorite_drink",
+          "value": "热茶",
+          "evidence": "我喜欢的饮品是热茶",
+          "episode": 3
+        },
+        {
+          "key": "favorite_opera",
+          "value": "京剧",
+          "evidence": "以后最喜欢的戏曲是京剧",
+          "episode": 1
+        }
+      ]
+    },
+    {
+      "input": "你为什么会忘记事情？",
+      "answer": "我没忘，您喜欢京剧、爱喝热茶，这两样都记着呢。刚才只是系统说普通喜好会自动整理，不用我另外存一遍。",
+      "trace": [
+        {
+          "type": "run.started"
+        },
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 1065
+        },
+        {
+          "type": "timing",
+          "stage": "model_request",
+          "elapsed_ms": 1183,
+          "input_chars": 3723,
+          "tool_count": 43
+        },
+        {
+          "type": "run.completed"
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 1214
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 0
+        },
+        {
+          "type": "memory.learn",
+          "status": "not_retained"
+        }
+      ],
+      "expected": null,
+      "expected_present": true,
+      "preferences": [
+        {
+          "key": "favorite_drink",
+          "value": "热茶",
+          "evidence": "我喜欢的饮品是热茶",
+          "episode": 3
+        },
+        {
+          "key": "favorite_opera",
+          "value": "京剧",
+          "evidence": "以后最喜欢的戏曲是京剧",
+          "episode": 1
+        }
+      ]
+    },
+    {
+      "input": "我喜欢的饮品是什么？",
+      "answer": "您喜欢热茶。",
+      "trace": [
+        {
+          "type": "run.started"
+        },
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 1071
+        },
+        {
+          "type": "timing",
+          "stage": "model_request",
+          "elapsed_ms": 1111,
+          "input_chars": 4253,
+          "tool_count": 43
+        },
+        {
+          "type": "run.completed"
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 1142
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 0
+        },
+        {
+          "type": "memory.learn",
+          "status": "archive_only"
+        }
+      ],
+      "expected": "热茶",
+      "expected_present": true,
+      "preferences": [
+        {
+          "key": "favorite_drink",
+          "value": "热茶",
+          "evidence": "我喜欢的饮品是热茶",
+          "episode": 3
+        },
+        {
+          "key": "favorite_opera",
+          "value": "京剧",
+          "evidence": "以后最喜欢的戏曲是京剧",
+          "episode": 1
+        }
+      ]
+    },
+    {
+      "input": "请忘记我的京剧爱好。",
+      "answer": "已删除匹配的对话记忆。",
+      "trace": [
+        {
+          "type": "host.memory_forget",
+          "removed": 2
+        },
+        {
+          "type": "memory.learn",
+          "status": "forget_unmatched"
+        }
+      ],
+      "expected": null,
+      "expected_present": true,
+      "preferences": [
+        {
+          "key": "favorite_drink",
+          "value": "热茶",
+          "evidence": "我喜欢的饮品是热茶",
+          "episode": 3
+        }
+      ]
+    },
+    {
+      "input": "我还喜欢什么饮品？",
+      "answer": "您之前说过喜欢热茶。想喝点什么，我帮您找找？",
+      "trace": [
+        {
+          "type": "run.started"
+        },
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 1157
+        },
+        {
+          "type": "timing",
+          "stage": "model_request",
+          "elapsed_ms": 1247,
+          "input_chars": 3651,
+          "tool_count": 43
+        },
+        {
+          "type": "run.completed"
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 1279
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 1
+        },
+        {
+          "type": "memory.learn",
+          "status": "archive_only"
+        }
+      ],
+      "expected": "热茶",
+      "expected_present": true,
+      "preferences": [
+        {
+          "key": "favorite_drink",
+          "value": "热茶",
+          "evidence": "我喜欢的饮品是热茶",
+          "episode": 3
+        }
+      ]
+    },
+    {
+      "input": "我喜欢哪种戏曲？不记得就说不记得。",
+      "answer": "不记得，您没跟我说过喜欢哪种戏曲。",
+      "trace": [
+        {
+          "type": "run.started"
+        },
+        {
+          "type": "timing",
+          "stage": "first_text",
+          "elapsed_ms": 1176
+        },
+        {
+          "type": "timing",
+          "stage": "model_request",
+          "elapsed_ms": 1235,
+          "input_chars": 3844,
+          "tool_count": 43
+        },
+        {
+          "type": "run.completed"
+        },
+        {
+          "type": "timing",
+          "stage": "runtime_including_tools",
+          "elapsed_ms": 1269
+        },
+        {
+          "type": "timing",
+          "stage": "speech_composition",
+          "elapsed_ms": 1
+        },
+        {
+          "type": "memory.learn",
+          "status": "archive_only"
+        }
+      ],
+      "expected": null,
+      "expected_present": true,
+      "preferences": [
+        {
+          "key": "favorite_drink",
+          "value": "热茶",
+          "evidence": "我喜欢的饮品是热茶",
+          "episode": 3
+        }
+      ]
+    }
+  ]
+}

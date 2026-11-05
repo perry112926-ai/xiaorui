@@ -1,0 +1,5 @@
+{
+  "recall_ast_sha256": "a13ea57c2b6be28540f9223e53172814f6c8772d60cf4e367a04af55d3cc7a51",
+  "equivalent": true,
+  "note": "Post-evaluation changes add task-recall barriers and stricter delete intents; evaluated retrieval functions and stopwords are identical to production."
+}

@@ -2,6 +2,7 @@
 from app.money import format_cents
 from app.summaries import normalize_summary, LABELS
 import asyncio
+from sqlite3 import Error as SQLiteError
 import copy
 import hashlib
 from decimal import Decimal, InvalidOperation
@@ -244,8 +245,9 @@ class AgentService:
     def tasks(self, owner):
         epoch = self.store.profile()['forget_epoch']
         tasks = self.store.list_tasks(owner)
+        barrier = self.memory.recall_barrier(owner)
         for task in tasks:
-            if task.get('forget_epoch') != epoch:
+            if task.get('forget_epoch') != epoch or task.get('created_at',0) <= barrier:
                 task['input'] = '[旧资料删除前的任务，内容不再展示]'
                 task['result'] = None
                 task['error'] = None
@@ -284,7 +286,8 @@ class AgentService:
                 if args.action == 'list':
                     return {'tasks': tasks}
                 task = self.store.get_task(owner, args.task_id)
-                if task.get('forget_epoch') != self.store.profile()['forget_epoch']:
+                if (task.get('forget_epoch') != self.store.profile()['forget_epoch']
+                        or task.get('created_at',0) <= self.memory.recall_barrier(owner)):
                     task.update(input='[旧资料删除前的任务，内容不再展示]', result=None, error=None)
                 return {'task': task}
             except (ValidationError, ValueError):
@@ -298,14 +301,23 @@ class AgentService:
             if is_critical(args.key):
                 return {'error': '家庭住址、本人和联系人电话等重要资料，请在右上角“我的资料卡”中填写、核对并确认保存。聊天不能自动修改或删除这些资料。'}
             if not session.lock.locked() or not profile_write_allowed(session.current_input,args.action):
-                return {'error':'这次没有收到明确的资料修改要求。要长期保存请说“请记住……”，要删除请说“请忘记……”。'}
+                return {'error':'普通喜好会自动整理，无需重复保存。本次没有改动已确认资料。'}
             if args.action == 'set':
                 self.store.set_fact(args.key, args.value)
                 profile = self.store.model_profile()
                 return {'saved': True, 'key': args.key, 'profile': profile}
             # Invalidating the conversation generation prevents old SDK history recall.
+            from app.companion_memory import forget_target
+            old_epoch = session.forget_epoch
+            old_value = self.store.list_facts().get(args.key)
+            self.memory.forget(owner, forget_target(session.current_input) or args.key)
+            if old_value:
+                # A semantic field name (e.g. nickname) may not occur in the
+                # original statement. Remove the known old value as well.
+                self.memory.forget(owner, str(old_value), literal=True)
             self.store.delete_fact(args.key)
             profile = self.store.model_profile()
+            self.memory.advance_epoch(owner, old_epoch, profile['forget_epoch'])
             current = self.store.session(owner)
             session.conversation_id = current['conversation_id']
             session.forget_epoch = current['forget_epoch']
@@ -545,7 +557,23 @@ class AgentService:
                 async with asyncio.timeout(180):
                     phrase = text.strip().rstrip('。！!，, ')
                     pending_action = self.actions.pending(owner)
-                    if read_only.READ_ONLY and phrase in {'确认叫车','确认下单','确认取消','确认新增地址'}:
+                    from app.companion_memory import forget_target, topic_terms
+                    target = forget_target(text)
+                    terms = topic_terms(target) if target else set()
+                    canonical_match = target and any(any(term in (key+' '+str(value)).lower() for term in terms)
+                        for key,value in self.store.list_facts().items())
+                    inferred_removed = self.memory.forget(owner,target) if target and not canonical_match else 0
+                    if inferred_removed:
+                        # Rotate only model context; preserve unrelated inferred
+                        # preferences in the same owner/forget generation.
+                        fresh = self.store.new_session(owner)
+                        session.conversation_id = fresh['conversation_id']
+                        session.display.clear()
+                        session.stores.clear();session.meals.clear();session.services.clear()
+                        self.actions.invalidate_pending(owner, status='cancelled')
+                        answer = '已删除匹配的对话记忆。'
+                        trace.append({'type':'host.memory_forget','removed':inferred_removed})
+                    elif read_only.READ_ONLY and phrase in {'确认叫车','确认下单','确认取消','确认新增地址'}:
                         answer = read_only.MESSAGE
                     elif phrase in {'确认叫车','确认下单','确认取消','确认新增地址'} and not contact_media.get():
                         if (pending_action is None or phrase != self.actions.phrase(pending_action)
@@ -590,7 +618,12 @@ class AgentService:
                     status='unknown'
                 elif action_states & {'failed','expired'}:
                     status='failed'
-                memory_status = await self.memory.learn(owner, session.forget_epoch, text, self._config())
+                try:
+                    memory_status = await self.memory.learn(owner, session.forget_epoch, text, self._config(), reply=response['text'])
+                except (OSError, SQLiteError, ValueError):
+                    # A memory side effect cannot turn a completed action into a
+                    # failed task that invites the user to repeat that action.
+                    memory_status = 'unavailable'
                 trace.append({'type': 'memory.learn', 'status': memory_status})
                 self.store.finish_task(task_id, status, result={'text': response['text'], 'trace': trace})
                 return response

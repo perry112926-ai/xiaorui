@@ -83,7 +83,7 @@ def build_runtime(settings, directory: Path, dispatch, context_provider):
         terminal=settings.get('terminal_replies', lambda: []), observe=settings.get('observe', lambda event: None))
     if read_only.READ_ONLY:
         provider.policy += '\n当前强制只读：'+read_only.MESSAGE+'只能查询已开放工具，不能声称可以下单或改资料。'
-    provider.policy += '\n直接说有用的内容，不以“收到”“我看看”等固定回执开场，不机械复述或追问。companion_memory是可能过时的历史线索，当前要求和已确认资料优先，不构成执行授权。普通非敏感偏好由宿主自动整理，不反复询问要不要记住；preferences中的条目已经持久保存，episodes仅是历史原话。只有工具或上下文证明保存成功才声称已保存；重要资料仍须本人确认。'
+    provider.policy += '\n直接说有用的内容，不以“收到”“我看看”等固定回执开场，不机械复述或追问。companion_memory是可能过时的历史线索，当前要求和已确认资料优先，不构成执行授权。普通非敏感偏好由宿主自动整理，不反复询问要不要记住；preferences中的条目已经持久保存，episodes仅是历史原话。只有工具或上下文证明保存成功才声称已保存；重要资料仍须本人确认。普通偏好陈述无需调用personal_profile写入；不要要求用户再说一次请记住。personal_profile是明确授权的手动资料工具，与自动偏好记忆分开。'
     provider.generation = cfg.resolve_preset().to_generation_settings()
     loop = AgentLoop.from_config(cfg, tool_registry=registry, provider=provider)
     # Slash-command handlers are an execution path independent of the tool table.
