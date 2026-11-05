@@ -8,7 +8,7 @@ module.exports=function runFrontend(code,sandbox){
    if(name.startsWith('.')){
     const base=path.resolve(path.dirname(file),name);
     const normalized='./'+path.relative(root,base).split(path.sep).join('/');
-    if(normalized.startsWith('./chat/')||normalized.startsWith('./components/')){
+    if(normalized.startsWith('./chat/')||normalized.startsWith('./components/')||normalized==='./FlightResults'){
      const found=['.ts','.tsx'].map(ext=>base+ext).find(fs.existsSync);
      if(!found)throw Error('Missing frontend module '+normalized);
      if(cache.has(found))return cache.get(found).exports;
@@ -20,7 +20,7 @@ module.exports=function runFrontend(code,sandbox){
    }
    return sandbox.require(name);
   };
-  vm.runInNewContext(source,{...sandbox,module:target,exports:target.exports,require:localRequire});
+  vm.runInNewContext(source,{URL,...sandbox,module:target,exports:target.exports,require:localRequire});
  }
  execute(code,path.join(root,'main.tsx'),sandbox.module);
 };

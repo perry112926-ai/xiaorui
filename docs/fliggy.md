@@ -4,24 +4,22 @@
 
 ## 配置
 
-1. 准备 Node.js 18 或以上版本。
-2. 在本机 `.env` 中配置 `FLYAI_API_KEY`，不要在对话中发送密钥。
-3. 下载并展开官方 CLI 1.0.16 到被忽略的本机目录：
+1. 点击顶部助手头像／名字 → “家人设置” → “飞猪 AI 机票”。
+2. 点击“官方开通入口”获取 API Key，在密码输入框填写并点击“保存服务配置”。已保存密钥不会回显，留空保持原值，也可明确清除。
+3. 准备 Node.js 18 或以上版本。尚未安装时，设置页提供 Node.js 官方安装入口；安装后重启小瑞。
+4. 点击“准备飞猪组件”。后端下载固定版本的官方 CLI 1.0.16 并验证 SHA-512，保存在 `.local-data/flyai/cli/`，不执行 npm 安装脚本。已有组件时显示就绪。
+5. 点击“检查连接”。只查询七天后北京至上海的公开航班，非本人的实际行程，不创建订单。检查通过表示本次查询通过，不代表已获得出票权限。
 
-```sh
-mkdir -p .local-data/flyai/cli
-curl -fL https://registry.npmjs.org/@fly-ai/flyai-cli/-/flyai-cli-1.0.16.tgz -o /tmp/flyai-cli-1.0.16.tgz
-tar -xzf /tmp/flyai-cli-1.0.16.tgz --strip-components=1 -C .local-data/flyai/cli
-```
+保存 Key 或准备组件后即可继续查询；只有安装 Node.js 或修改启动环境变量后才需要重启。也可在 `.env` 手动设置 `FLYAI_API_KEY`。
 
 后端使用官方 CLI 的签名协议，密钥只放在子进程环境中。仅允许固定的 `search-flight` 子命令与受验证参数，不接受模型提供的命令、服务地址或任意工具名。CLI 保留自身的设备标识行为；文档与协议以官方版本为准。
 
-重启服务后可说：“查一下11月13日北京到上海的直飞机票，1000元以内。”缺少日期或城市时应先补充信息。搜索报价随库存变化，不能当成含税成交价。
+配置好后可说：“查一下11月13日北京到上海的直飞机票，1000元以内。”结果以航班卡片展示，点击“去飞猪核对并预订”打开新标签页；文字、语音和历史记录都保留入口。缺少日期或城市时应先补充信息。搜索报价随库存变化，不能当成含税成交价。
 
 ## 验证
 
 ```sh
-.venv/bin/python -m unittest tests.test_fliggy
+.venv/bin/python -m unittest tests.test_fliggy tests.test_fliggy_setup tests.test_settings
 ```
 
 2026-11-06：使用用户提供的凭据，通过官方 CLI 和小瑞适配器验证北京至上海示例航班搜索；返回航班、报价与 `router.feizhu.com` 预订链接。直接请求 MCP 返回 401，官方签名 CLI 请求成功。未创建订单、付款或出票；预订链接后的结算流程未验收。

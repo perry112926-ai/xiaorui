@@ -84,7 +84,7 @@ export function useAppController(){
  function displayResponse(d:ChatResponse,phoneTurn=false,replyIds:string[]=[]){
    const incoming:Omit<Message,'id'>[]=[];
    const response:Omit<Message,'id'>={task_id:d.task_id,role:'assistant',text:d.text,speech_text:d.speech_text,locationRequest:/定位|上车.*位置/.test(d.text)};
-   const events=(d.events??[]).filter(event=>['stores','meals','plan','action_plan','service_choices','location_request'].includes(event.type));
+   const events=(d.events??[]).filter(event=>['stores','meals','plan','action_plan','service_choices','location_request','flight_result'].includes(event.type));
    if(!phoneTurn&&!events.length&&(d.text||d.speech_text))incoming.push(response);
 
    events.forEach((event,i)=>{
@@ -94,6 +94,7 @@ export function useAppController(){
     if(event.type==='plan'){const p=legacyAction(event.plan);updateAction(p);setActiveAction(p.id);message.actionPlan=p;}
     if(event.type==='action_plan'){updateAction(event.plan);setActiveAction(event.plan.id);message.actionPlan=event.plan}
     if(event.type==='service_choices'){message.choices=event.choices;setActiveChoices(event.choices)}
+    if(event.type==='flight_result')message.flightResult=event.data;
     incoming.push(message);
    });
    replacePending(incoming,replyIds);

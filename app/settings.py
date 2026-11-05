@@ -17,6 +17,8 @@ from urllib.parse import urlsplit
 from dotenv import dotenv_values, set_key
 from fastapi import APIRouter, HTTPException, Request
 from app import read_only
+from app.fliggy import Fliggy
+from app.fliggy_setup import runtime_status, prepare_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = ROOT / '.env'
@@ -33,6 +35,7 @@ PROVIDERS = {
     'mcd': {'label': '麦当劳', 'fields': ['MCD_MCP_TOKEN'], 'required': ['MCD_MCP_TOKEN'], 'live_check': True},
     'luckin': {'label': '瑞幸', 'fields': ['LUCKIN_MCP_TOKEN'], 'required': ['LUCKIN_MCP_TOKEN'], 'live_check': True},
     'didi': {'label': '滴滴', 'fields': ['DIDI_MCP_KEY'], 'required': ['DIDI_MCP_KEY'], 'live_check': True},
+    'fliggy': {'label': '飞猪 AI 机票', 'fields': ['FLYAI_API_KEY'], 'required': ['FLYAI_API_KEY'], 'live_check': True},
 }
 ALLOWED_FIELDS = frozenset(field for p in PROVIDERS.values() for field in p['fields'])
 NONSECRET_FIELDS = frozenset({'ARK_MODEL', 'ARK_BASE_URL'})
@@ -83,6 +86,7 @@ def configuration():
                  'configured': (all(bool(_value(name, local)) for name in spec['required'])
                                 and (provider != 'ark' or _base_allowed(_value('ARK_BASE_URL', local)))),
                  **({'endpoint_allowed': _base_allowed(_value('ARK_BASE_URL', local))} if provider == 'ark' else {}),
+                 **(runtime_status() if provider == 'fliggy' else {}),
                  'live_check_available': spec['live_check'], 'verification': 'not_tested'}
                 for provider, spec in PROVIDERS.items()},
             'storage': 'local-backend-env', 'transaction_settings_editable': False,
@@ -208,7 +212,35 @@ async def test_settings(provider: str):
     if _test_lock.locked():
         raise HTTPException(409, '已有连接检查正在进行，请稍等。')
     async with _test_lock:
+        if provider == 'fliggy':
+            ready = runtime_status()
+            if not ready['runtime_ready']:
+                return {'provider':provider, 'configured':True, 'status':'needs_setup',
+                        'detail':'请先准备飞猪组件；需要 Node.js 18 或以上版本。', **ready}
+            from datetime import datetime, timedelta
+            from zoneinfo import ZoneInfo
+            departure = (datetime.now(ZoneInfo('Asia/Shanghai')) + timedelta(days=7)).date().isoformat()
+            try:
+                result = await asyncio.wait_for(Fliggy(ENV_PATH).dispatch({
+                    'origin':'北京', 'destination':'上海', 'dep_date':departure, 'direct_only':True}), timeout=35)
+                status = 'failed' if result.get('error') else 'passed' if result.get('flights') else 'empty'
+            except TimeoutError:
+                status = 'timeout'
+            except Exception:
+                status = 'failed'
+            return {'provider':provider, 'configured':True, 'status':status, 'query':status,
+                    'transactions_attempted':0, 'detail':'只查询七天后北京至上海的公开航班，不读取乘机人、不创建订单或付款。'}
         from experiments.read_only_service_check import matrix
         result = (await matrix([provider], timeout=35))['checks'][0]
         return {**result, 'status': result['query'],
                 'detail': '仅测试公开地标的只读查询，不下单、不查询私人地址或订单。'}
+
+
+@router.post('/prepare/fliggy')
+async def prepare_fliggy():
+    if read_only.READ_ONLY:
+        raise HTTPException(403, '只读预览不能准备服务组件。')
+    if _test_lock.locked():
+        raise HTTPException(409, '已有服务准备或检查正在进行，请稍等。')
+    async with _test_lock:
+        return await prepare_runtime()

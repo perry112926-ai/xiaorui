@@ -98,3 +98,17 @@ class Flights(unittest.IsolatedAsyncioTestCase):
         for data in ({'error':'denied'}, {'success':False}, {'data':{}}, None):
             with self.assertRaises(ValueError):
                 normalize(data)
+
+    def test_catalog_and_health_expose_flight_capability_without_transactions(self):
+        from app.skills import catalog
+        from app.main import app
+        from fastapi.testclient import TestClient
+        entry=next(item for item in catalog() if item['id']=='travel.fliggy')
+        self.assertEqual(entry['tools'],['fliggy_search_flights'])
+        self.assertEqual(entry['scope'],'query-only')
+        with patch('app.fliggy.Fliggy.configured',True),patch('app.fliggy_setup.runtime_status',return_value={'runtime_ready':False}),TestClient(app,base_url='http://localhost') as client:
+            state=client.get('/api/health').json()['fliggy']
+        self.assertTrue(state['configured'])
+        self.assertFalse(state['runtime_ready'])
+        self.assertTrue(state['query_only'])
+        self.assertFalse(state['order_execution_enabled'])

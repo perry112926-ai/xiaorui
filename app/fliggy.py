@@ -10,9 +10,9 @@ from zoneinfo import ZoneInfo
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from app.fliggy_setup import CLI
 
 ROOT = Path(__file__).resolve().parents[1]
-CLI = ROOT / '.local-data/flyai/cli/dist/flyai-bundle.cjs'
 
 
 class FlightSearch(BaseModel):
@@ -92,17 +92,28 @@ def normalize(payload):
 
 
 class Fliggy:
+    def __init__(self, env_path=None):
+        self.env_path = Path(env_path) if env_path is not None else ROOT / '.env'
+
+    @property
+    def credential(self):
+        return str(os.environ.get('FLYAI_API_KEY', dotenv_values(self.env_path, interpolate=False).get('FLYAI_API_KEY') or '')).strip()
+
+    @property
+    def configured(self):
+        return bool(self.credential)
+
     async def dispatch(self, arguments):
         try:
             args = FlightSearch.model_validate(arguments)
         except ValidationError:
             return {'error': '请提供不同的出发地和目的地、有效的未来出发日期及正确预算；回程不能早于出发。'}
-        key = str(os.environ.get('FLYAI_API_KEY', dotenv_values(ROOT / '.env').get('FLYAI_API_KEY') or '')).strip()
+        key = self.credential
         if not key:
-            return {'error': '飞猪尚未配置，请由家人在本机设置 FLYAI_API_KEY。'}
+            return {'error': '飞猪尚未配置，请由家人在“设置 → 家人设置 → 飞猪 AI 机票”填写 Key。'}
         node = shutil.which('node')
         if not node or not CLI.is_file():
-            return {'error': '飞猪官方 CLI 尚未准备好，请按 docs/fliggy.md 配置。'}
+            return {'error': '飞猪组件尚未准备好，请由家人在“设置 → 家人设置 → 飞猪 AI 机票”准备组件；需要 Node.js 18 或以上版本。'}
         command = [node, str(CLI), 'search-flight', '--origin', args.origin,
                    '--destination', args.destination, '--dep-date', args.dep_date.isoformat(), '--sort-type', '3']
         for flag, value in [('--back-date', args.back_date.isoformat() if args.back_date else None),

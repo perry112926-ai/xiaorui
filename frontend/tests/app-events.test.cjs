@@ -19,7 +19,7 @@ function harness(options={}){
  const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
  return{render,flush,spoken,feedback,voice,requests,paymentNavigations,get cancellations(){return cancellations;},get callbacks(){return callbacks;},emit:event=>source.onmessage({data:JSON.stringify(event)})};
 }
-function all(node,predicate){if(!node||typeof node!=='object')return[];if(typeof node.type==='function'&&['AppView','Conversation','Composer','MessageItem','StoreCards','MealCards','Mic','Keyboard','Photo','Phone'].includes(node.type.name))return[predicate(node)?node:null,...all(node.type(node.props),predicate)].filter(Boolean);return[predicate(node)?node:null,...React.Children.toArray(node.props?.children).flatMap(child=>all(child,predicate))].filter(Boolean);}
+function all(node,predicate){if(!node||typeof node!=='object')return[];if(typeof node.type==='function'&&['AppView','Conversation','Composer','MessageItem','FlightResults','StoreCards','MealCards','Mic','Keyboard','Photo','Phone'].includes(node.type.name))return[predicate(node)?node:null,...all(node.type(node.props),predicate)].filter(Boolean);return[predicate(node)?node:null,...React.Children.toArray(node.props?.children).flatMap(child=>all(child,predicate))].filter(Boolean);}
 const reply=(id,text,events=[])=>({type:'completed',message_id:id,response:{text,speech_text:text,events}});
 test('caller speech blocks late autoplay even when an old started event arrives afterwards; new final permits its own reply',async()=>{
  const h=harness();h.render();await h.flush();h.render();
@@ -283,4 +283,21 @@ test('one malformed historical record does not disable valid messages or the com
  const h=harness({replay:[{type:'unknown'},reply('valid-history','保留的历史回复')]});h.render();await h.flush();const tree=h.render();
  assert.equal(all(tree,n=>n.type==='textarea').length,1);
  assert.ok(all(tree,n=>n.type==='p'&&n.props.className==='message-text'&&n.props.children==='保留的历史回复').length);
+});
+
+test('flight result becomes a booking card in chat, phone and replay without auto-navigation',async()=>{
+ const flight={type:'flight_result',data:{flights:[{ticket_price_yuan:'400.00',booking_url:'https://router.feizhu.com/ws/example',journeys:[{type:'直达',segments:[{marketingTransportNo:'MF8561',depStationName:'大兴',arrStationName:'浦东',depDateTime:'2026-11-13 08:00',arrDateTime:'2026-11-13 10:10'}]}]}]}};
+ for(const replay of [false,true]){
+  const response=reply('flight-'+replay,'查询结果',[flight]);
+  const h=harness(replay?{replay:[response]}:{});h.render();await h.flush();h.render();
+  if(!replay)h.emit(response);
+  const tree=h.render();
+  const links=all(tree,n=>n.type==='a'&&n.props.href==='https://router.feizhu.com/ws/example');
+  assert.equal(links.length,1);assert.equal(links[0].props.target,'_blank');
+  assert.deepEqual(h.paymentNavigations,[]);
+ }
+ const h=harness();h.render();await h.flush();h.render();
+ h.emit({...reply('flight-call','电话结果',[flight]),call_id:'call-test'});
+ const tree=h.render();assert.equal(all(tree,n=>n.type==='a'&&n.props.href==='https://router.feizhu.com/ws/example').length,1);
+ assert.deepEqual(h.paymentNavigations,[]);
 });

@@ -6,6 +6,7 @@ import {callDuration} from '../CallBar';
 import {CardHeading} from '../CardHeading';
 import {Phone} from './Icons';
 import {MessageProgress} from './MessageProgress';
+import {FlightResults} from '../FlightResults';
 import {StoreCards,MealCards} from './LegacyCandidates';
 import type {Message} from '../chat/types';
 import type {useAppController} from '../chat/useAppController';
@@ -19,7 +20,7 @@ export function MessageItem({message:m,c}:{message:Message;c:MessageActions}){
    <div className="message-body">
     {m.pending&&<MessageProgress text={m.progress||'正在回复'} stream={m.stream}/>}
     {!!m.images?.length&&<div className="message-images">{m.images.map(image=><a href={image.url} target="_blank" rel="noreferrer" key={image.id}><img src={image.url} alt="发送的图片"/></a>)}</div>}
-    {m.text&&<p className="message-text">{m.text}</p>}
+    {m.flightResult!==undefined?<FlightResults result={m.flightResult}/>:m.text&&<p className="message-text">{m.text}</p>}
     {m.delivery&&<small className="delivery">{m.delivery}{m.delivery==='发送结果待核实'&&m.client_id&&<button type="button" onClick={()=>void transmit(m.text,m.client_id!,m.images)}>重试发送</button>}</small>}
     {m.speech_text&&<button className="speech-button" type="button" onClick={()=>voice.speaking||voice.loadingSpeech?stopPlayback():playReply(m.speech_text!)}>{voice.loadingSpeech?'停止生成语音':voice.speaking?'停止播报':'▶ 听小瑞说'}</button>}
     {m.stores&&<StoreCards stores={m.stores} disabled={!!busy||blocked||m.stores!==stores} onChoose={chooseStore}/>}

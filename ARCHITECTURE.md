@@ -83,3 +83,9 @@ TTS 将官方 MP3 音频块直接转发给原生音频播放器，整段播报�
 MCP 的结构解码在 `mcp_payload.py` 复用；各 provider 仍分别验证自己的成功封装、拒绝结果和授权工具目录。`has_pending_any` 与 `has_pending_call` 分别表示所有队列和指定通话队列，SQL 的 `IS` 明确保留 NULL 安全比较语义。
 
 本轮能力矩阵、LongMemEval／LoCoMo 前后评测与缺口见[能力检查报告](docs/evaluations/personal-agent-2026-11-06/audit.md)。
+
+## 飞猪机票查询与外部预订
+
+`app/fliggy.py` 以严格参数模型注册 `fliggy_search_flights`，通过固定官方签名 CLI 查询航班；不注册机票写操作，也不进入 `ActionManager` 交易执行流程。模型只接触显式投影的航段、票价、查询时间和官方预订链接。`flight_result` 事件随对话持久化，前端在文字、通话及历史恢复时渲染 `FlightResults` 卡片；用户点击官方 HTTPS 入口后在飞猪核对并付款，宿主不自动打开、不代付，也不能推断跳转后的出票状态。
+
+家人设置通过 `/api/settings` 以只写方式保存 `FLYAI_API_KEY`，不回显已保存的密钥。`/api/settings/prepare/fliggy` 下载固定版本官方组件并验证 SHA-512；`/api/settings/test/fliggy` 使用七天后北京至上海的固定公开查询，返回状态而不返回航班原始载荷或凭据。只读预览禁止配置变更、组件准备及配置检查；已准备好的航班查询仍在只读工具白名单内。`/api/health` 分别报告凭据存在、组件存在和只查询边界；它们不代表真实查询或出票已经通过。

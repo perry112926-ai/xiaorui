@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from app.plans import PlanError
 from app.recommendations import recommend
 from app.service_skills import SERVICE_SCHEMAS
+from app.fliggy import SCHEMAS as FLIGGY_SCHEMAS
 from app.didi_scenario import SCHEMAS as DIDI_SCHEMAS
 from app.mcd_scenario import SCHEMAS as MCD_SCHEMAS
 from app.luckin_scenario import SCHEMAS as LUCKIN_SCHEMAS
@@ -85,7 +86,9 @@ def catalog():
              'enabled': True, 'scope': 'local-profile', 'source': 'skills/core/SKILL.md'},
             {'id': 'core.tasks', 'name': '任务记录', 'tools': ['task_records'],
              'enabled': True, 'scope': 'owner', 'source': 'skills/tasks/SKILL.md'},
-            {'id': 'life.services', 'name': '瑞幸与滴滴查询', 'tools': list(SERVICE_SCHEMAS),
+            {'id': 'travel.fliggy', 'name': '飞猪机票查询与预订入口', 'tools': list(FLIGGY_SCHEMAS),
+             'enabled': True, 'scope':'query-only', 'source':'skills/services/SKILL.md'},
+            {'id': 'life.services', 'name': '瑞幸与滴滴查询', 'tools': [n for n in SERVICE_SCHEMAS if n not in FLIGGY_SCHEMAS],
              'enabled': True, 'scope': 'conversation', 'source': 'skills/services/SKILL.md'},
             *[{'id':f'life.{provider}', 'name':name, 'tools':list(schemas), 'enabled':True,
                'scope':'owner-transactions', 'source':f'skills/{provider}/SKILL.md'}

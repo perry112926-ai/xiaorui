@@ -348,10 +348,14 @@ async def read_call(fn, *args):
 
 @router.get('/api/health')
 async def health():
+    from app.fliggy import Fliggy
+    from app.fliggy_setup import runtime_status
     return {'ok': True, 'order_execution_enabled': ORDER_ENABLED and not read_only.READ_ONLY,
             'read_only': read_only.READ_ONLY,
             'mcd_configured': bool(mcd_token()),
-            'agent_configured': agent.configured}
+            'agent_configured': agent.configured,
+            'fliggy': {'configured':Fliggy().configured, **runtime_status(),
+                       'query_only':True, 'order_execution_enabled':False}}
 
 
 @router.post('/api/mcd/stores')

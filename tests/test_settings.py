@@ -151,6 +151,65 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(response.json()['status'], 'failed')
         self.assertNotIn('private-marker', response.text)
 
+    def test_fliggy_key_save_mask_clear_and_environment_override(self):
+        saved = self.save({'FLYAI_API_KEY':'flight-private-marker'})
+        self.assertEqual(saved.status_code, 200)
+        self.assertTrue(saved.json()['providers']['fliggy']['configured'])
+        self.assertIn('runtime_ready', saved.json()['providers']['fliggy'])
+        self.assertNotIn('flight-private-marker', saved.text)
+        self.assertNotIn('flight-private-marker', self.client.get('/api/settings').text)
+        self.assertEqual(dotenv_values(self.file)['FLYAI_API_KEY'], 'flight-private-marker')
+        self.assertFalse(self.save({'FLYAI_API_KEY':''}).json()['providers']['fliggy']['configured'])
+        with patch.dict(os.environ, {'FLYAI_API_KEY':'environment-private-marker'}):
+            config = self.client.get('/api/settings').json()
+            self.assertFalse(config['fields']['FLYAI_API_KEY']['editable'])
+            self.assertEqual(self.save({'FLYAI_API_KEY':'replacement'}).status_code, 409)
+
+    def test_fliggy_checks_saved_key_with_fixed_public_query_and_no_payload_echo(self):
+        self.assertEqual(self.client.post('/api/settings/test/fliggy').json()['status'], 'not_configured')
+        self.save({'FLYAI_API_KEY':'flight-private-marker'})
+        with patch('app.settings.runtime_status', return_value={'runtime_ready':True}), \
+             patch('app.settings.Fliggy') as adapter:
+            adapter.return_value.dispatch = AsyncMock(return_value={'flights':[{'private':'payload-marker'}]})
+            response = self.client.post('/api/settings/test/fliggy')
+        adapter.assert_called_once_with(self.file)
+        args = adapter.return_value.dispatch.call_args.args[0]
+        self.assertEqual((args['origin'],args['destination']), ('北京','上海'))
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        self.assertEqual(args['dep_date'], (datetime.now(ZoneInfo('Asia/Shanghai'))+timedelta(days=7)).date().isoformat())
+        self.assertTrue(args['direct_only'])
+        self.assertEqual(response.json()['status'],'passed')
+        self.assertEqual(response.json()['transactions_attempted'],0)
+        self.assertNotIn('payload-marker',response.text)
+        self.assertNotIn('private-marker',response.text)
+
+    def test_fliggy_missing_runtime_empty_failed_timeout_and_setup_boundaries(self):
+        self.save({'FLYAI_API_KEY':'flight-private-marker'})
+        with patch('app.settings.runtime_status', return_value={'runtime_ready':False}), \
+             patch('app.settings.Fliggy') as adapter:
+            self.assertEqual(self.client.post('/api/settings/test/fliggy').json()['status'], 'needs_setup')
+            adapter.assert_not_called()
+        for result, expected in [({'flights':[]}, 'empty'), ({'error':'private-marker'}, 'failed')]:
+            with patch('app.settings.runtime_status', return_value={'runtime_ready':True}), \
+                 patch('app.settings.Fliggy') as adapter:
+                adapter.return_value.dispatch = AsyncMock(return_value=result)
+                response=self.client.post('/api/settings/test/fliggy')
+                self.assertEqual(response.json()['status'],expected)
+                self.assertNotIn('private-marker',response.text)
+        with patch('app.settings.runtime_status', return_value={'runtime_ready':True}), \
+             patch('app.settings.Fliggy') as adapter:
+            adapter.return_value.dispatch = AsyncMock(side_effect=TimeoutError)
+            self.assertEqual(self.client.post('/api/settings/test/fliggy').json()['status'],'timeout')
+        with patch('app.settings.prepare_runtime',new_callable=AsyncMock,return_value={'status':'ready'}) as prepare:
+            self.assertEqual(self.client.post('/api/settings/prepare/fliggy').json()['status'],'ready')
+            prepare.assert_awaited_once()
+            with patch.object(settings.read_only,'READ_ONLY',True):
+                self.assertEqual(self.client.post('/api/settings/prepare/fliggy').status_code,403)
+                self.assertEqual(self.client.post('/api/settings/test/fliggy').status_code,403)
+                self.assertEqual(self.save({'FLYAI_API_KEY':'new'}).status_code,403)
+            self.assertEqual(prepare.await_count,1)
+
     def test_read_only_mode_and_failed_replace_do_not_modify_existing_file(self):
         self.file.write_text('UNRELATED=original\n')
         with patch.object(settings.read_only, 'READ_ONLY', True):

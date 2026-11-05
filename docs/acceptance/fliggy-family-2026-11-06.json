@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-06",
+  "scope": "FlyAI family settings, runtime setup and flight booking links",
+  "automation": {
+    "backend_unittest": {
+      "passed": 372,
+      "failed": 0
+    },
+    "frontend_node_tests": {
+      "passed": 94,
+      "failed": 0
+    },
+    "frontend_build": "passed",
+    "git_diff_check": "passed"
+  },
+  "live_checks": {
+    "isolated_http_save_key_without_echo": "passed",
+    "fresh_official_bundle_download_and_sha512_verification": "passed",
+    "family_settings_public_flight_query": "passed",
+    "browser_settings_check_result": "passed",
+    "browser_real_agent_flight_cards": "passed",
+    "browser_reload_restores_cards": "passed"
+  },
+  "public_query": {
+    "origin": "北京",
+    "destination": "上海",
+    "departure_date": "2026-11-13",
+    "direct_only": true
+  },
+  "transactions_attempted": 0,
+  "limitations": [
+    "未创建机票订单、付款或出票",
+    "未验收飞猪结算页及出票状态",
+    "语音航班卡片展示由自动化覆盖，真人麦克风完整机票流程未验收"
+  ],
+  "privacy": "No credentials, passengers or raw provider responses in this record."
+}
