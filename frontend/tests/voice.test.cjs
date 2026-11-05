@@ -51,32 +51,29 @@ test('switching away cancels a voice message without sending partial text',async
  assert.deepEqual(h.received,[]);assert.equal(h.stopped,1);h.cleanup();
 });
 
-test('partial hello gets a local reply before ASR final, without duplicate reply or model work',async()=>{
+test('partial greeting does not interrupt a pause; an exact final greeting gets one local response',async()=>{
  const h=harness();await h.voice.startCall();await h.flush();h.loud();h.audio();h.sockets[0].receive({type:'ready'});
  h.sockets[0].receive({type:'partial',text:'喂。'});h.silence(300);await h.flush();
- assert.equal(h.players.length,1);assert.equal(h.players[0].url,'blob:test');assert.deepEqual(h.received,[]);
- assert.equal(h.requests.filter(r=>r.url==='/api/voice/tts/prepare').length,0);
+ assert.equal(h.players.length,0);assert.deepEqual(h.received,[]);
  h.silence(1000);h.sockets[0].receive({type:'final',text:'喂。'});await h.flush();
  assert.equal(h.players.length,1);assert.deepEqual(h.received,[]);
  h.loud();assert.equal(h.players[0].paused,true);h.cleanup();
 });
 
-test('caller receives feedback during a short pause even before cloud ASR is ready',async()=>{
+test('short pauses before ASR readiness or during a real question never play a filler',async()=>{
  const h=harness();await h.voice.startCall();await h.flush();h.loud();h.audio();
- h.silence(300);await h.flush();
- assert.equal(h.players.length,1);assert.deepEqual(h.received,[]);
- assert.equal(h.requests.filter(r=>r.url==='/api/voice/tts/prepare').length,0);
- h.loud();assert.equal(h.players[0].paused,true);h.cleanup();
+ h.silence(300);await h.flush();assert.equal(h.players.length,0);
+ h.sockets[0].receive({type:'ready'});h.sockets[0].receive({type:'partial',text:'喂，帮我查天气。'});
+ h.silence(300);await h.flush();assert.equal(h.players.length,0);
+ h.silence(1000);h.sockets[0].receive({type:'final',text:'喂，帮我查天气。'});await h.flush();
+ assert.equal(h.players.length,0);assert.deepEqual(h.received,['喂，帮我查天气。']);h.cleanup();
 });
 
-test('cached task acknowledgements are immediate and interruptible without cloud synthesis',async()=>{
- const h=harness();const first=h.voice.feedback('帮我查一下天气');await h.flush();
- assert.equal(h.players.length,1);assert.equal(h.requests[0].url,'/assets/voice-feedback/checking.wav');
- h.voice.stopSpeech();await first;
- const second=h.voice.feedback('帮我找附近的店');await h.flush();
- assert.equal(h.players.length,2);assert.equal(h.requests.length,1);
- assert.equal(h.feedbackKind('确认叫车'),'review');
- assert.equal(h.feedbackKind('等一下'),'wait');
+test('task and confirmation phrases cannot play canned clips even when explicitly requested',async()=>{
+ const h=harness();await h.voice.feedback('帮我查一下天气');await h.voice.feedback('确认叫车');await h.flush();
+ assert.equal(h.players.length,0);assert.equal(h.requests.length,0);
+ const first=h.voice.feedback('等一下');await h.flush();assert.equal(h.players.length,1);h.voice.stopSpeech();await first;
+ const second=h.voice.feedback('等一下');await h.flush();assert.equal(h.players.length,2);assert.equal(h.requests.length,1);
  h.voice.stopSpeech();await second;h.cleanup();
 });
 

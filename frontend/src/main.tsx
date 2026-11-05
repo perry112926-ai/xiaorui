@@ -135,7 +135,7 @@ export function App(){
   const submissionKey=JSON.stringify([phoneId||'chat',text,outgoingImages.map(image=>image.id)]);if(inflightSends.current.has(submissionKey))return;inflightSends.current.add(submissionKey);
   try{
   if(outgoingImages.length)setAttachments([]);setExtrasOpen(false);
-  if(phoneId||!activePhone.current){if(!phoneId)voice.stopSpeech();autoplayAllowed.current=true;interrupted.current=true;if(phoneId)void voice.feedback(text,true);}setVoiceNotice('');if(spoken===undefined)setInput('');setActiveChoices(undefined);setActiveAction('');setPlan(undefined);setModal(false);
+  if(phoneId||!activePhone.current){if(!phoneId)voice.stopSpeech();autoplayAllowed.current=true;interrupted.current=true;}setVoiceNotice('');if(spoken===undefined)setInput('');setActiveChoices(undefined);setActiveAction('');setPlan(undefined);setModal(false);
   const client_id=crypto.randomUUID();if(!phoneId){add({role:'user',text,client_id,images:outgoingImages,delivery:'正在发送'});add({role:'assistant',text:'',pending:true,replyTo:client_id,progress:'正在发送消息…'});}
   if(/打车|叫车|我在哪|我的位置|当前位置|定位/.test(text)&&!/^确认/.test(text)&&Date.now()-locationFresh.current>110000)await requestLocation();
   await transmit(text,client_id,outgoingImages,phoneId);

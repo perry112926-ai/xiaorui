@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-06",
+  "synthetic_microphone": true,
+  "physical_microphone": false,
+  "production_useVoice": true,
+  "real_cloud_asr": true,
+  "transcript": "帮我看看明天的天气。",
+  "automatic_audio_plays_before_reply": 0,
+  "explicit_reply_real_tts_playback": true,
+  "hangup_returns_idle": true,
+  "model_or_business_calls": false,
+  "limits": [
+    "独立验收页，非完整生产聊天或真人麦克风验收",
+    "实际播报使用明确标识的合成测试文案，未验证模型回答延迟"
+  ],
+  "frontend_tests": 77,
+  "build_passed": true
+}

@@ -119,10 +119,10 @@ test('phone preserves composer, speaks an opening question and routes spoken tur
  tree=h.render();assert.equal(all(tree,n=>n.type==='article').length,0);
 });
 
-test('phone acknowledges each new request before the background answer exists',async()=>{
+test('phone does not preface each request with a canned acknowledgment and still speaks its real answer',async()=>{
  const h=harness();await connectPhone(h);h.feedback.length=0;h.spoken.length=0;
  h.callbacks.onFinal('帮我看看明天的天气');
- assert.deepEqual(h.feedback,['帮我看看明天的天气']);
+ assert.deepEqual(h.feedback,[]);
  assert.deepEqual(h.spoken,[]);
  await h.flush();h.render();
  h.emit({type:'started',call_id:'call-test-1',message_id:'quick-weather'});

@@ -23,4 +23,4 @@ export function feedbackClip(kind:FeedbackKind){
  }
  return pending;
 }
-export function warmFeedback(){return Promise.all((Object.keys(feedbackText) as FeedbackKind[]).map(feedbackClip));}
+export function warmFeedback(){return Promise.all((['present','wait'] as FeedbackKind[]).map(feedbackClip));}
