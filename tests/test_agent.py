@@ -199,7 +199,7 @@ class AgentTests(unittest.IsolatedAsyncioTestCase):
         plan=self.agent.actions.prepare('a','mcd','create',{},quote)
         result=await self.agent.chat('a','不点了')
         self.assertEqual(self.agent.actions.get('a',plan['id'])['status'],'cancelled')
-        self.assertFalse(session.services['mcd'].get('cart'))
+        self.assertFalse(session.services.get('mcd',{}).get('cart'))
         self.assertIn('没有执行真实交易',result['text'])
         self.service.create_order.assert_not_awaited()
 
@@ -221,7 +221,7 @@ class AgentTests(unittest.IsolatedAsyncioTestCase):
         session=self.agent._session('a')
         session.services['mcd']={'cart':[{'product':{'name':'测试餐'}}],'budget_cents':3500}
         result=await self.agent.chat('a','不点了')
-        self.assertFalse(session.services['mcd'].get('cart'))
-        self.assertNotIn('budget_cents',session.services['mcd'])
+        self.assertFalse(session.services.get('mcd',{}).get('cart'))
+        self.assertNotIn('budget_cents',session.services.get('mcd',{}))
         self.assertIn('真实订单不会因此取消',result['text'])
         self.service.create_order.assert_not_awaited()

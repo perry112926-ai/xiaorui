@@ -7,8 +7,10 @@ BUSINESS_WORDS = re.compile(r'麦当劳|瑞幸|滴滴|点餐|外卖|套餐|购�
 
 
 def business_turn(text, services):
-    from app.text_delivery import lightweight_chat
-    return bool(BUSINESS_WORDS.search(text)) or (bool(set(services)&{'mcd','didi','luckin'}) and not lightweight_chat(text))
+    if BUSINESS_WORDS.search(text):return True
+    # History may resolve a short continuation, but must not capture new tasks.
+    continuation=re.fullmatch(r'(?:继续|继续吧|就这个|就这份|换一个|换一份|多少钱|要多久|不要冰的|热的|第?[一二三123](?:个|份)?)[。！？!?\s]*',text.strip())
+    return bool(continuation and set(services)&{'mcd','didi','luckin'})
 
 
 def business_reply(text, services, facts, events, profile=None):
@@ -44,6 +46,10 @@ def business_reply(text, services, facts, events, profile=None):
     # successful operation. This host question covers the next supported step.
     if re.search(r'机票|航班|订票|出票|飞猪',text):
         return '您这次从哪个城市出发？我可以先查航班和预订入口，尚未订票或付款。'
+    if re.search(r'取消.*(?:订单|单子)|不.*付钱|订单|单子|付款|支付',text):
+        return '还没有取得这笔订单的最新官方状态，暂不能确认是否已付款或取消；您可以直接说新的需求。'
+    target=next((domain for domain,pattern in [('didi',r'滴滴|打车|叫车|司机|师傅'),('luckin',r'瑞幸|咖啡'),('mcd',r'麦当劳|点餐|外卖|套餐|购物车')] if re.search(pattern,text)),None)
+    if target:services={target:services.get(target,{})}
     mcd=services.get('mcd',{})
     draft=mcd.get('address_draft',{})
     if draft:

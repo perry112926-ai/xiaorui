@@ -42,6 +42,7 @@ from app.speech import SpeechComposer, context as speech_context, fallback as sp
 
 from app.model_views import project_result, project_services, project_plans
 from app.factual_replies import business_turn, business_reply
+from app.task_switching import reminder_request, clear_drafts, cancel_mcd_order, release_completed_drafts
 
 # Compatibility name for callers that previously used the blacklist sanitizer.
 model_safe = project_result
@@ -474,6 +475,10 @@ class AgentService:
         return answer
 
     def _answer(self, owner, session, text, answer, events, trace, task_id, conversation_reset=False):
+        for event in events:
+            plan=event.get('plan',{})
+            if event.get('type')=='action_plan' and plan.get('action')=='create' and plan.get('id') and plan.get('status') in ActionManager.REVIEW:
+                session.services.setdefault(plan['provider'],{})['checkout_plan_id']=plan['id']
         ready=[e for e in events if e.get('type')=='service_choices' and any(c.get('recommendation_id') for c in e.get('choices',[]))]
         if ready:
             events=[e for e in events if e.get('type')!='service_choices' or e is ready[-1]]
@@ -545,6 +550,7 @@ class AgentService:
         if session.lock.locked():
             raise AgentError('小瑞正在回复，请稍等。', 409)
         async with session.lock:
+            release_completed_drafts(self,session,owner)
             session.current_input = text.strip()
             events, trace = [], []
             session.speech_turn = None
@@ -588,19 +594,25 @@ class AgentService:
                             except ActionError as exc:
                                 answer = exc.message
                         trace.append({'type':'host.confirmation'})
+                    elif reminder_request(text):
+                        self.actions.invalidate_pending(owner)
+                        answer='目前还不能到时主动提醒您。可以在手机上设置计时器；您也可以直接说其他需求。'
+                        trace.append({'type':'host.reminder_boundary'})
+                    elif phrase in {'取消订单','取消麦当劳订单','帮我取消订单','不想付钱了','不付了'} and not read_only.READ_ONLY and (answer:=await cancel_mcd_order(self,session,owner,events)) is not None:
+                        trace.append({'type':'host.cancel_order_query'})
                     elif not read_only.READ_ONLY and (recommendation_id:=resolve_selection(session,text)):
                         result=await self.scenarios['mcd'].dispatch(session,owner,'mcd_choose_recommendation',{'recommendation_id':recommendation_id},events)
                         if 'products' in result:events.append({'type':'service_choices','choices':choice_cards(result)})
                         answer=self.proposal_text(result['plan']) if result.get('plan') else result.get('error') or result.get('note','请重新查询套餐。')
                         trace.append({'type':'host.meal_selection'})
-                    elif phrase in {'先不下单','先不叫车','取消方案','先不取消','算了','不点了','先不点了','先不新增地址'} and (pending_action or phrase in {'不点了','先不点了'}):
+                    elif phrase in {'先不下单','先不叫车','取消方案','先不取消','算了','不点了','先不点了','先不新增地址','这事先不做了','不弄了'} and (pending_action or session.services):
                         if pending_action:
                             current = self.actions.cancel_local(owner,pending_action['id'])
                             events.append({'type':'action_plan','plan':current})
                         answer = '已取消这份待确认方案，没有执行真实交易。' if pending_action else '好的，这次先不点了。购物车已清空；已经创建的真实订单不会因此取消。'
-                        if phrase in {'算了','不点了','先不点了'}:
-                            session.services.get('mcd',{}).pop('cart',None)
-                            session.services.get('mcd',{}).pop('budget_cents',None)
+                        if phrase not in {'先不取消'}:
+                            clear_drafts(session)
+                        answer+=' 您可以直接说新的需求。'
                     else:
                         # Any changed conversation requires a fresh proposal;
                         # old card capabilities cannot approve a modified plan.
