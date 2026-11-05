@@ -47,3 +47,19 @@ class SpeechHostTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('免密扣款',result['speech_text'])
         self.assertIn('确认叫车',result['speech_text'])
         self.assertNotIn('已经帮您叫车',result['speech_text'])
+
+    async def test_host_passes_current_profile_to_speech_editor_after_preferences_change(self):
+        self.agent.store.set_fact('preferences.food','喜欢鱼类')
+        self.agent.speech.compose=AsyncMock(return_value={'text':'先核对您选的餐品。','source':'model','stage':'choose_meal'})
+        class Bot:
+            async def __aenter__(self):return self
+            async def __aexit__(self,*args):pass
+            async def stream(self,*args,**kw):
+                yield SimpleNamespace(type='run.completed',name=None,result=SimpleNamespace(error=None,stop_reason='completed',content='按您喜欢鱼类的偏好，先看看真实菜单。'))
+        with patch('app.agent.build_runtime',return_value=Bot()),patch.object(self.agent,'_config',return_value={'key':'test-only','model':'test-only','base':'https://test.invalid'}):
+            await self.agent.chat('a','推荐午餐')
+        self.assertEqual(self.agent.speech.compose.call_args.kwargs['profile']['facts']['preferences.food'],'喜欢鱼类')
+        self.agent.store.delete_fact('preferences.food')
+        with patch('app.agent.build_runtime',return_value=Bot()),patch.object(self.agent,'_config',return_value={'key':'test-only','model':'test-only','base':'https://test.invalid'}):
+            await self.agent.chat('a','再看看')
+        self.assertNotIn('preferences.food',self.agent.speech.compose.call_args.kwargs['profile']['facts'])

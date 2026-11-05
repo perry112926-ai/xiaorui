@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-05",
+  "business_writes": false,
+  "fictional_profile_only": true,
+  "real_model_and_official_menu": true,
+  "exact_card_prompt_replayed": true,
+  "official_combo_rounds": 3,
+  "confirmation_prepared_without_order": true,
+  "current_request_overrides_saved_preference": true,
+  "tts_audio_bytes": 153261,
+  "speech_guard_replay_passed": true,
+  "limits": [
+    "Frontend card click and duplicate/stale protection tested in application event harness.",
+    "Live selection replays the generated card prompt over production HTTP routes; not a full browser transaction.",
+    "No user profile changes, order creation, payment, microphone or human listening acceptance."
+  ]
+}

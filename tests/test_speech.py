@@ -123,3 +123,44 @@ class SpeechTests(unittest.IsolatedAsyncioTestCase):
         with patch('app.speech.httpx.AsyncClient',side_effect=lambda **kw:original(transport=httpx.MockTransport(handler),**kw)):
             result=await SpeechComposer().compose({'model':'test-only','base':'https://test.invalid','key':'test-only'},'有哪些车','screen',vehicles(),[{'role':'user','text':'预算55元'}])
         self.assertEqual(result['source'],'model')
+
+    def test_food_speech_keeps_saved_preferences_and_recommendation_reason_without_contacts(self):
+        events=[{'type':'service_choices','choices':[
+            {'kind':'product','label':'麦香鱼套餐','detail':'菜单参考价33.00元','price_yuan':'33.00','prompt':'选择第7个商品'},
+            {'kind':'product','label':'另一套餐','detail':'菜单参考价38.00元','prompt':'选择第8个商品'}]}]
+        profile={'facts':{'preferences.food':'喜欢鱼类','preference.drink':'不喝冰饮',
+                          'home.address':'private-address','self.phone':'13800000000','preferences.music':'戏曲'}}
+        data=context('今天预算35元，帮我推荐','您喜欢鱼类，可以先看麦香鱼套餐，饮料温度还要核对。',events,[],profile)
+        self.assertEqual(data['stage'],'choose_meal')
+        focused=narration_input(data)
+        self.assertEqual(focused['dining_preferences'],{'preferences.food':'喜欢鱼类','preference.drink':'不喝冰饮'})
+        self.assertIn('饮料温度还要核对',focused['recommendation_context'])
+        self.assertNotIn('private-address',str(focused))
+        self.assertNotIn('13800000000',str(focused))
+        self.assertIn('今天预算35元',focused['user'])
+        self.assertNotIn('prompt',str(focused['choices']))
+
+    def test_current_dining_request_does_not_rewrite_saved_preferences(self):
+        profile={'facts':{'preferences.food':'喜欢鱼类'}}
+        data=context('今天不吃鱼，预算30元','先看看其他餐品。',[],[],profile)
+        self.assertEqual(data['user'],'今天不吃鱼，预算30元')
+        self.assertEqual(profile['facts']['preferences.food'],'喜欢鱼类')
+        self.assertNotIn('dining_preferences',context('打车去车站','请选车型',vehicles(),[],profile).get('plan',{}))
+        self.assertEqual(context('打车去车站','请选车型',vehicles(),[],profile)['dining_preferences'],{})
+
+    async def test_short_personal_recommendation_survives_without_second_model_call(self):
+        events=[{'type':'service_choices','choices':[{'kind':'product','label':'麦香鱼套餐','detail':'菜单参考价33.00元'}]}]
+        answer='您喜欢鱼类，可以先看看麦香鱼套餐，菜单参考价33元。饮料温度还需要核对，您想选这份吗？'
+        with patch('app.speech.httpx.AsyncClient') as client:
+            result=await SpeechComposer().compose({},'预算35元帮我选',answer,events,[],{'facts':{'preferences.food':'喜欢鱼类'}})
+        client.assert_not_called()
+        self.assertIn('您喜欢鱼类',result['text'])
+        self.assertIn('温度还需要核对',result['text'])
+
+    def test_no_ice_preference_cannot_invent_an_unsupported_drink_modification(self):
+        history=[{'role':'assistant','text':'套餐选项','events':[{'type':'query_result','tool':'mcd_product_detail',
+            'data':{'rounds':[{'choices':[{'name':'可乐中杯'},{'name':'麦咖啡热美式中杯'}]}]}}]}]
+        data=context('选这份套餐','可选热美式。',[],history,{'facts':{'preferences.drinks':'不喜欢冰饮'}})
+        self.assertFalse(valid('您可以选择可乐去冰。',data))
+        self.assertTrue(valid('可选麦咖啡热美式中杯，您想选它吗？',data))
+        self.assertTrue(valid('可乐去冰尚不支持，需要核对其他选项。',data))

@@ -196,3 +196,20 @@ test('elderly user cannot grant microphone permission: end the call record and k
  const tree=await connectPhone(h);assert.equal(all(tree,n=>n.type?.name==='CallBar').length,0);assert.equal(all(tree,n=>n.type==='textarea').length,1);assert.equal(h.requests.filter(r=>r.url.endsWith('/end')).length,1);
  assert.ok(all(tree,n=>n.props?.role==='alert').some(n=>JSON.stringify(n.props.children).includes('麦克风未获允许')));
 });
+
+
+test('selecting a meal card sends its exact candidate once and waits for server options, never confirms an order',async()=>{
+ const h=harness();h.render();await h.flush();h.voice.inCall=false;h.voice.phase='idle';
+ const choices=[{kind:'product',label:'麦香鱼套餐',price_yuan:'33.00',prompt:'选择第7个商品：麦香鱼套餐。请继续给我核对，先不要执行交易。'}];
+ h.emit(reply('food','看看这份套餐',[{type:'service_choices',choices}]));let tree=h.render();
+ const card=all(tree,n=>n.props?.choices?.[0]?.label==='麦香鱼套餐')[0];assert.ok(card);assert.equal(card.props.disabled,false);
+ card.props.onChoose(choices[0].prompt);card.props.onChoose(choices[0].prompt);await h.flush();
+ const sends=h.requests.filter(r=>r.url==='/api/contact/messages');assert.equal(sends.length,1);
+ assert.equal(JSON.parse(sends[0].options.body).text,choices[0].prompt);
+ assert.equal(h.requests.filter(r=>/\/api\/actions\/.*\/confirm/.test(r.url)).length,0);
+ const nextChoices=[{...choices[0],label:'新的餐品',prompt:'选择第1个商品'}];
+ h.emit(reply('next','请看新的餐品',[{type:'service_choices',choices:nextChoices}]));tree=h.render();
+ const cards=all(tree,n=>Array.isArray(n.props?.choices));
+ assert.equal(cards.find(n=>n.props.choices[0].label==='麦香鱼套餐').props.disabled,true);
+ assert.equal(cards.find(n=>n.props.choices[0].label==='新的餐品').props.disabled,false);
+});

@@ -18,6 +18,7 @@ PROMPT = '''你是小瑞的口语表达编辑，正在与一位有自主决定�
 候选车型：说明已查到车型和预估费用，帮助比较或选择；别挨个念清单，也别擅自推荐、假设舒适性或替用户选车。
 屏幕有多项时，默认最多点名两项。已有预算时，只说一两项符合预算的选项；其余概括为超预算，不再逐项报名称和价格。
 例如用户改口只想看看，可以说“好，咱们先看看。下面是可选车型和预估费用，您想选哪一种再告诉我。”不要接着又念整张表。
+dining_preferences是用户明确保存且当前有效的用餐偏好，只在用餐推荐时使用。结合recommendation_context中的推荐理由、真实餐品卡片和本轮要求，简短说出为什么先看这几份；本次明确要求优先于长期偏好，不能把旧喜好强加给用户。没有相关资料时不能假装了解用户，也不根据年龄推测口味、病情或食量。不播报住址、电话等无关隐私。餐品名称或图片不能证明不辣、无糖、无过敏原或适合某种疾病；相关规格未查询到就说明需要核对，不保证健康安全。菜单参考价不等于含配送费的最终总额，预算内只能指菜单参考价。dining_options是已查询的官方套餐选项；不要因不喝冰饮偏好就推荐未返回的“可乐去冰”等改配，优先介绍真实热饮选项，无法核实的改配要说明尚不支持或还需核对。
 用户已说预算或偏好就承接它，不再问同一个问题。用户说不看屏幕、请念出来时，要说出可依据的选项和费用，最多420字。
 追问缺参时只问最必要的一件事。用户改口时承接最新条件，不重复旧条件。不要每轮机械加“您还需要什么”。
 普通长回复要真正说出一两个有用的内容要点，不要只说“屏幕已经列好了，您慢慢看”。仅在需要用户从卡片选择时才以卡片作引导。
@@ -136,7 +137,18 @@ def progress_speech(provider,data):
     return '我查到了这笔订单的最新记录，放在下面了。进度还需要以官方状态为准，先别重复提交。'
 
 
-def context(user,answer,events,history):
+def dining_preferences(profile):
+    """Only current, explicitly stored dining facts reach the speech editor."""
+    facts = profile.get('facts', {}) if isinstance(profile, dict) else {}
+    if not isinstance(facts, dict):
+        return {}
+    return {key:value[:300] for key,value in facts.items()
+            if isinstance(key,str) and isinstance(value,str)
+            and re.search(r'(?:^|[._-])(?:foods?|drinks?|dining|diet|dietary|taste|allergies|allergy|meals?|budget)(?:$|[._-])',key)
+            and not re.search(r'(?:^|[._-])(?:phone|address|contact|home)(?:$|[._-])',key)}
+
+
+def context(user,answer,events,history,profile=None):
     plans=[e.get('plan') for e in events if e.get('type') in {'action_plan','plan'} and e.get('plan')]
     if plans:
         return {'stage':'transaction','plan':plans[-1]}
@@ -148,7 +160,7 @@ def context(user,answer,events,history):
     for event in events:
         if event.get('type')=='service_choices':
             choices=[{'label':str(c.get('label','')),'detail':str(c.get('detail',''))} for c in event.get('choices',[])[:5]]
-            stage='choose_vehicle' if any('车型' in c.get('prompt','') for c in event.get('choices',[])) else 'choose_option'
+            stage='choose_vehicle' if any('车型' in c.get('prompt','') for c in event.get('choices',[])) else 'choose_meal' if any(c.get('kind')=='product' for c in event.get('choices',[])) else 'choose_option'
         elif event.get('type')=='stores':
             choices=[{'label':str(c.get('name','')),'detail':str(c.get('address',''))} for c in event.get('stores',[])[:5]]
             stage='choose_store'
@@ -157,7 +169,17 @@ def context(user,answer,events,history):
             stage='choose_meal'
     if not choices:
         stage='conversation'
+    options=[]
+    for message in history[-6:]:
+        for event in message.get('events',[]):
+            if event.get('type')=='query_result' and event.get('tool')=='mcd_product_detail' and isinstance(event.get('data'),dict):
+                options=[str(choice.get('name','')) for row in event.get('data',{}).get('rounds',[]) for choice in row.get('choices',[])][:100]
+    for event in events:
+        if event.get('type')=='query_result' and event.get('tool')=='mcd_product_detail' and isinstance(event.get('data'),dict):
+            options=[str(choice.get('name','')) for row in event.get('data',{}).get('rounds',[]) for choice in row.get('choices',[])][:100]
     return {'stage':stage,'user':user,'screen_answer':answer,'choices':choices,
+            'dining_options':options,
+            'dining_preferences':dining_preferences(profile) if stage=='choose_meal' or re.search(r'麦当劳|点餐|外卖|套餐|饮食|口味',user+answer) else {},
             'history':[{'role':m['role'],'text':str(m.get('text',''))[:500],
                         'prepared_speech':str(m.get('speech_text',''))[:500]}
                        for m in history[-6:] if m.get('role') in {'user','assistant'}]}
@@ -169,6 +191,12 @@ def fallback(data):
     if data['stage']=='order_progress':
         return {'text':progress_speech(data['provider'],data['data']),'source':'grounded','stage':'order_progress'}
     stage=data['stage']
+    if stage=='choose_meal':
+        brief=re.sub(r'\s+',' ',clean(data['screen_answer'])).strip()
+        # Preserve a concise, already grounded personalized recommendation even
+        # when the optional second speech-editing call is unavailable.
+        if 2<=len(brief)<=120 and valid(brief,data) and not re.search(r'(?m)^\s*(?:[-*]\s|\d+[.)、]\s)|[|{}]',data['screen_answer']):
+            return {'text':brief,'source':'brief','stage':stage}
     if stage.startswith('choose_'):
         subject={'choose_vehicle':'车型和预估费用','choose_store':'附近的门店','choose_meal':'套餐和核价结果'}.get(stage,'可选的几项')
         text=f'我查到了{subject}，放在下面了。您可以告诉我想选哪一个，也可以直接点卡片。'
@@ -219,11 +247,17 @@ def valid(text,data):
         return False
     if re.search(r'[零〇一二两三四五六七八九十百千万点]+(?:元|分钟|公里)',text):
         return False
+    if data.get('dining_options'):
+        options=' '.join(data['dining_options'])
+        for sentence in re.split(r'[。！？；]',text):
+            for option in ('去冰','少冰','无冰','少糖','不辣'):
+                if option in sentence and option not in options and not re.search(r'尚不支持|暂不支持|不能保证|需.{0,4}核对|还.{0,4}核对|无法确认|不能确认',sentence):
+                    return False
     facts=json.dumps(data['choices'],ensure_ascii=False) if data['choices'] else data['screen_answer']
     if limit==180 and len(data['choices'])>2 and sum(
             Decimal(n) in numbers(facts) for n in re.findall(r'(\d+(?:\.\d+)?)\s*元',text))>2:
         return False
-    user_context=data['user']+' '+' '.join(m['text'] for m in data.get('history',[]) if m['role']=='user')
+    user_context=data['user']+' '+' '.join(m['text'] for m in data.get('history',[]) if m['role']=='user')+' '+json.dumps(data.get('dining_preferences',{}),ensure_ascii=False)
     allowed=numbers(facts+' '+user_context)|{Decimal(len(data['choices']))}
     for match in re.finditer(r'(\d+(?:\.\d+)?)\s*元',text):
         value=Decimal(match[1])
@@ -251,6 +285,9 @@ def narration_input(data):
         return data
     selected=dict(data)
     selected['visible_option_count']=len(data['choices'])
+    if data['stage']=='choose_meal':
+        selected['recommendation_context']=data['screen_answer'][:1200]
+        selected['narration_goal']='结合用户当前有效用餐偏好与本轮要求，说出真实推荐的一两份及理由；本次改口优先，不把菜单参考价当含费总额，不推断口味或健康安全，不代替用户选择。'
     selected['screen_answer']='完整选项已经显示在卡片上；本轮只需要帮助理解与选择，没有执行交易。'
     user_context=' '.join(m['text'] for m in data['history'] if m['role']=='user')+' '+data['user']
     budgets=re.findall(r'预算(?:是|为)?\s*(\d+(?:\.\d+)?)',user_context)
@@ -267,13 +304,14 @@ def narration_input(data):
         selected['choices']=[]
         selected['available_on_screen']=['车型','预估费用']
     else:
-        selected['choices']=data['choices'][:2]
+        mentioned=[choice for choice in data['choices'] if choice['label'] and choice['label'] in data['screen_answer']]
+        selected['choices']=(mentioned if data['stage']=='choose_meal' and mentioned else data['choices'])[:2]
     return selected
 
 
 class SpeechComposer:
-    async def compose(self,settings,user,answer,events,history):
-        data=context(user,answer,events,history)
+    async def compose(self,settings,user,answer,events,history,profile=None):
+        data=context(user,answer,events,history,profile)
         safe=fallback(data)
         # Critical facts use an explicit host composition; brief conversational
         # replies are already spoken language and need no additional model call.

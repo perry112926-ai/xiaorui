@@ -351,15 +351,15 @@ class AgentService:
         notify({'type': 'progress', 'stage': 'narration', 'text': '回复已生成，正在整理成简短的话'})
         started = time.monotonic()
         session.speech_turn = await self.speech.compose(
-            self._config(), text, result.content.strip(), events, session.display)
+            self._config(), text, result.content.strip(), events, session.display, profile=self.store.model_profile())
         trace.append({'type': 'timing', 'stage': 'speech_composition',
                       'elapsed_ms': round((time.monotonic() - started) * 1000)})
         return result.content.strip()
 
     def _answer(self, owner, session, text, answer, events, trace, task_id, conversation_reset=False):
-        spoken = session.speech_turn or speech_fallback(speech_context(text, answer, events, session.display))
+        spoken = session.speech_turn or speech_fallback(speech_context(text, answer, events, session.display, self.store.model_profile()))
         if any(event.get('type') in {'plan','action_plan'} for event in events):
-            spoken = speech_fallback(speech_context(text, answer, events, session.display))
+            spoken = speech_fallback(speech_context(text, answer, events, session.display, self.store.model_profile()))
         response = {'text': answer, 'speech_text': spoken['text'], 'speech_source': spoken['source'],
                     'speech_stage': spoken['stage'], 'events': events,
                     'runtime': 'nanobot', 'task_id': task_id, 'trace': trace,
