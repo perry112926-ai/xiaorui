@@ -2,6 +2,7 @@
 import asyncio
 import copy
 import hashlib
+from decimal import Decimal, InvalidOperation
 import json
 import os
 import time
@@ -65,7 +66,16 @@ def choice_cards(result):
                 detail=f'本次预估 {item["priceText"]} 元，实际费用以平台为准'
             if key=='products' and item.get('menu_price_yuan'):
                 detail=f'菜单参考价 {item["menu_price_yuan"]} 元，尚需核价'
-            cards.append({'label':str(name),'detail':detail,'image':item.get('image'),
+            product_fields = {}
+            if key=='products' and 'menu_price_yuan' in item:
+                product_fields = {'kind':'product', 'price_kind':'menu'}
+                try:
+                    price = Decimal(str(item['menu_price_yuan']))
+                    if price.is_finite() and 0 <= price <= 100000 and price == price.quantize(Decimal('0.01')):
+                        product_fields['price_yuan'] = f'{price:.2f}'
+                except (InvalidOperation, ValueError, TypeError):
+                    pass
+            cards.append({**product_fields,'label':str(name),'detail':detail,'image':item.get('image'),
                 'prompt':f'选择第{number}个{label}：{name}。请继续给我核对，先不要执行交易。'})
         return cards
     return []

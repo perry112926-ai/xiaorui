@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-05",
+  "real_model_and_production_http": true,
+  "real_menu_product_cards": 2,
+  "with_official_photo": 2,
+  "with_structured_menu_price": 2,
+  "browser_preview": "Official image and menu price snapshots rendered at desktop and 390px viewport; screenshots private under .local-data/ui-previews.",
+  "business_writes": false,
+  "limits": "Browser preview used earlier official menu snapshot; live chat separately verified current card events. No order created or payment tested."
+}
