@@ -14,6 +14,7 @@ from nanobot.config.schema import Config
 
 from app.skills import SCHEMAS, build_tools
 from app import read_only
+from app.latency import LatencyProvider, CHAT_POLICY, MCD_POLICY, WEATHER_POLICY
 
 logger.disable('nanobot')
 ROOT = Path(__file__).resolve().parents[1]
@@ -101,12 +102,25 @@ def build_runtime(settings, directory: Path, dispatch, context_provider):
     cfg.bind_source_path(directory / 'config.json')
     registry = HostedRegistry()
     for tool in build_tools(dispatch):
-        if not settings.get('lightweight_chat'):
+        if not settings.get('lightweight_chat') and (settings.get('tool_names') is None or tool.name in settings['tool_names']):
             registry.register(tool)
-    loop = AgentLoop.from_config(cfg, tool_registry=registry)
+    provider = LatencyProvider(api_key=settings['key'], api_base=settings['base'],
+        default_model=settings['model'], provider_name='ark', trust_env=settings.get('trust_env',False),
+        extra_body={'thinking': {'type': 'disabled'}, 'prompt_cache_key': 'xiaorui-host-v1'},
+        policy=(CHAT_POLICY if settings.get('lightweight_chat') else WEATHER_POLICY
+                if settings.get('tool_names') == {'amap_weather'} else MCD_POLICY
+                if settings.get('tool_names') and all(n.startswith('mcd_') or n=='personal_profile' for n in settings['tool_names'])
+                else SYSTEM),
+        terminal=settings.get('terminal_replies', lambda: []), observe=settings.get('observe', lambda event: None))
+    if read_only.READ_ONLY:
+        provider.policy += '\n当前强制只读：'+read_only.MESSAGE+'只能查询已开放工具，不能声称可以下单或改资料。'
+    provider.generation = cfg.resolve_preset().to_generation_settings()
+    loop = AgentLoop.from_config(cfg, tool_registry=registry, provider=provider)
     # Slash-command handlers are an execution path independent of the tool table.
     loop.commands = CommandRouter()
     expected = set(SCHEMAS) & read_only.QUERY_TOOLS if read_only.READ_ONLY else set(SCHEMAS)
+    if settings.get('tool_names') is not None:
+        expected &= set(settings['tool_names'])
     if settings.get('lightweight_chat'):
         expected = set()
     if set(registry.tool_names) != expected:

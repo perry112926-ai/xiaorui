@@ -324,7 +324,7 @@ class SpeechComposer:
                              {'role':'user','content':json.dumps(narration_input(data),ensure_ascii=False)}],
                  'response_format':{'type':'json_object'},'thinking':{'type':'disabled'}}
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(7,connect=4)) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(7,connect=4),trust_env=settings.get('trust_env',False)) as client:
                 response=await client.post(settings['base'].rstrip('/')+'/chat/completions',
                     headers={'Authorization':'Bearer '+settings['key']},json=payload)
                 response.raise_for_status()

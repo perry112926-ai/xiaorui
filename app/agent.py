@@ -32,6 +32,7 @@ from app.location import LocationStore
 from app.luckin_scenario import LuckinScenario
 from app.contact_events import notify, contact_media, contact_call, contact_reply_mode
 from app.text_delivery import quick_answer, lightweight_chat
+from app.latency import tool_scope, terminal_reply, candidate_context, current_weather_city
 from app.speech import SpeechComposer, context as speech_context, fallback as speech_fallback
 
 
@@ -155,6 +156,7 @@ class AgentService:
             return str(os.environ.get(k, env.get(k) or default)).strip()
         return {'key': get('ARK_API_KEY'), 'model': get('ARK_MODEL'),
                 'context_window':int(get('ARK_CONTEXT_WINDOW_TOKENS','64000')),
+                'trust_env':get('ARK_TRUST_ENV','false').lower() == 'true',
                 'base': get('ARK_BASE_URL', 'https://ark.cn-beijing.volces.com/api/v3').rstrip('/')}
 
     @property
@@ -317,6 +319,7 @@ class AgentService:
             trace.append({'type':'host.amap_capability_boundary'})
             return boundary
         weather_reports=[]
+        terminal_replies=[]
         async def dispatch(name, arguments):
             notify(tool_activity(name))
             started = time.monotonic()
@@ -326,6 +329,7 @@ class AgentService:
                 trace.append({'type': 'timing', 'stage': 'tool',
                               'name': name if name in SCHEMAS else 'unknown',
                               'elapsed_ms': round((time.monotonic() - started) * 1000)})
+            terminal_replies.append(terminal_reply(name, result, text))
             self.store.save_session(owner, session.snapshot())
             if isinstance(result, dict) and 'error' in result:
                 trace.append({'type': 'tool.error', 'name': name})
@@ -336,12 +340,23 @@ class AgentService:
             notify({'type': 'progress', 'stage': 'answer', 'text': '正在整理这一步的结果，您可以继续补充'})
             return result
 
+        city = current_weather_city(text) if not contact_media.get() else None
+        if city:
+            started = time.monotonic()
+            data = await dispatch('amap_weather', {'city': city, 'forecast': False})
+            answer = terminal_reply('amap_weather', data, text)
+            if answer:
+                trace.append({'type':'host.direct_weather'})
+                trace.append({'type':'timing','stage':'first_text','elapsed_ms':round((time.monotonic()-started)*1000)})
+                notify({'type':'delta','text':answer})
+                return answer
+
         async def context(request):
             return [data_context('conversation_channel', {'mode':'phone' if contact_call.get() else 'chat',
                     'guidance':'正在实时电话通话。像真人打电话一样简短承接用户的话，默认一两句短口语。缺资料时只问当前最必要的一项，不先罗列后续还要提供的多项资料。对方说没听清、不会操作或让你一句一句说时，减少信息量，一步一步引导，不声称已经调整硬件音量或语速。主动问一个推进当前事情所必需的问题，不重复已知条件。需要选择时发真实卡片，并说我给您发了卡片，选好告诉我。不要假设用户正在看屏幕；可语音解释选项。通话不改变真实交易确认规则。' if contact_call.get() else '普通消息聊天。自然承接上下文，必要时主动问一个问题，不机械追加问句。'}),
                     data_context('capability_policy', {'read_only': read_only.READ_ONLY, 'message': read_only.MESSAGE if read_only.READ_ONLY else '依实际工具能力执行'}),
                     data_context('canonical_profile', self.store.model_profile()),
-                    data_context('service_candidates', model_safe(session.services)),
+                    data_context('service_candidates', model_safe(candidate_context(session.services))),
                     data_context('recent_actions', model_safe([self.actions.public(p) for p in self.actions.list(owner)[:8]])),
                     data_context('current_candidates', {
                         'stores': list(session.stores.values()),
@@ -352,9 +367,10 @@ class AgentService:
 
         owner_key = hashlib.sha256(owner.encode()).hexdigest()[:32]
         key = f'xiaorui:{owner_key}:{session.conversation_id}:e{session.forget_epoch}'
-        settings = self._config()
-        if (contact_reply_mode.get() == 'text' and not contact_media.get()
-                and not session.services and not self.actions.pending(owner)
+        settings = {**self._config(), 'tool_names': tool_scope(text, session.services, SCHEMAS),
+                    'terminal_replies': lambda: terminal_replies, 'observe': trace.append}
+        if (not contact_media.get()
+                and not self.actions.pending(owner)
                 and lightweight_chat(text)):
             settings = {**settings, 'lightweight_chat': True}
             trace.append({'type': 'host.lightweight_chat'})

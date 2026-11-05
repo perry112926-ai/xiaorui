@@ -86,6 +86,11 @@ class PrepareCart(Args):
     remark: str = Field(default='', max_length=50)
 
 
+class UpdateCart(Args):
+    operations: list[Cart] = Field(min_length=1, max_length=10)
+    checkout: PrepareCart | None = None
+
+
 class Order(Args):
     plan_id: str = Field(min_length=1, max_length=128)
 
@@ -95,6 +100,7 @@ class Cancel(Order):
 
 
 SCHEMAS = {
+    'mcd_update_cart': (UpdateCart, '优先使用：一次完成本轮购物车的多项增删改；operations按顺序填写，序号以每一步修改后的购物车为准。需要核价时同时传checkout，程序统一核价，不必先show再分次修改再核价。套餐选项必须来自已查到的真实选项；不会下单。'),
     'mcd_recommend_meals': (RecommendationArgs, '默认点餐入口：按本次已确认地址／地标查到的门店，自动推荐最多三个有图片、套餐规则可构建且真实核价通过的单人套餐。用户明确只要单品、少量餐品时可传meal_type=single，不强推套餐。无需让老人先选门店或逐项搭配；可带预算、不喝冰饮和避开食材关键词。返回具体默认搭配和含费总额，不创建订单。'),
     'mcd_choose_recommendation': (RecommendedChoice, '选本轮已预检套餐，直接准备完整待确认方案；不再逐项询问套餐内容或餐具，不会创建订单。'),
     'mcd_address_draft': (AddressDraft, '分步收集本次新收餐地址，不写入官方账号。每次只传用户本轮提供或核对的字段，保留已说过的信息，一次只追问一个缺项。用户换地方或换收餐人用reset=true。收齐后仍需mcd_prepare_address和独立确认。'),
@@ -181,6 +187,20 @@ class McdScenario:
             if name in {'mcd_search_pickup','mcd_delivery_addresses','mcd_delivery_stores','mcd_menu','mcd_prepare_order','mcd_prepare_cart'}:
                 self.transactions.invalidate_pending(owner)
             state = session.services.setdefault('mcd', {})
+            if name == 'mcd_update_cart':
+                original = copy.deepcopy(state.get('cart', []))
+                result = None
+                for operation in args.operations:
+                    result = await self.dispatch(session, owner, 'mcd_cart',
+                        operation.model_dump(exclude_unset=True), events)
+                    if 'error' in result:
+                        state['cart'] = original
+                        return {**result, 'cart_changes_applied': False}
+                if args.checkout is not None:
+                    result = await self.dispatch(session, owner, 'mcd_prepare_cart',
+                        args.checkout.model_dump(exclude_unset=True), events)
+                    return {**result, 'cart_changes_applied': True}
+                return {**result, 'cart_changes_applied': True}
             if name=='mcd_recommend_meals':
                 self.transactions.invalidate_pending(owner)
                 return await recommend(self,state,args)

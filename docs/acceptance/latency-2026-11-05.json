@@ -1,0 +1,639 @@
+{
+  "date": "2026-11-05",
+  "model": "deepseek-v4-1-flash-261017",
+  "budget_seconds": 8,
+  "budget_measures": "Full useful answer / confirmation card, not receipt or first token.",
+  "network_probe": {
+    "same_short_prompt_default_proxy_seconds": 5.056,
+    "same_short_prompt_direct_seconds": 1.104,
+    "sample_count_per_path": 1
+  },
+  "summary": {
+    "chat": {
+      "samples": 6,
+      "min_seconds": 1.223,
+      "median_seconds": 1.658,
+      "max_seconds": 2.738,
+      "all_completed": true
+    },
+    "weather": {
+      "samples": 6,
+      "min_seconds": 2.272,
+      "median_seconds": 2.518,
+      "max_seconds": 3.543,
+      "all_completed": true
+    },
+    "cart_quote": {
+      "samples": 6,
+      "min_seconds": 3.276,
+      "median_seconds": 4.199,
+      "max_seconds": 6.545,
+      "all_completed": true
+    }
+  },
+  "runs": [
+    {
+      "model": "deepseek-v4-1-flash-261017",
+      "business_writes": false,
+      "hardware_voice_tested": false,
+      "turns": [
+        {
+          "scenario": "chat",
+          "seconds": 1.673,
+          "answer": "一个人在家确实容易闷得慌，我陪您聊会儿。您今天在家都忙了些什么呀？",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 1409
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1613,
+              "input_chars": 1444,
+              "tool_count": 0
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 1633
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 3
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": false
+        },
+        {
+          "scenario": "weather",
+          "seconds": 2.472,
+          "answer": "高德官方天气：北京市，晴，12℃。高德报告时间：2026-11-05 19:39:32。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "amap_weather",
+              "elapsed_ms": 2465
+            },
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 2466
+            }
+          ],
+          "ok": true,
+          "model_requests": 0,
+          "grounded": false
+        },
+        {
+          "scenario": "chat",
+          "seconds": 1.223,
+          "answer": "我在呢，您想聊点啥都行。今天家里就您一个人，午饭吃了没有呀？",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 995
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1196,
+              "input_chars": 1494,
+              "tool_count": 0
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 1205
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 0
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": false
+        },
+        {
+          "scenario": "weather",
+          "seconds": 3.384,
+          "answer": "高德官方天气：北京市，晴，12℃。高德报告时间：2026-11-05 19:39:32。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "amap_weather",
+              "elapsed_ms": 3378
+            },
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 3380
+            }
+          ],
+          "ok": true,
+          "model_requests": 0,
+          "grounded": false
+        },
+        {
+          "scenario": "chat",
+          "seconds": 1.47,
+          "answer": "我在呢，您说啥我都听着。要不咱聊聊您平时爱干点啥，比如听戏、遛弯儿还是看电视？",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 1130
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1436,
+              "input_chars": 1541,
+              "tool_count": 0
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 1450
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 1
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": false
+        },
+        {
+          "scenario": "weather",
+          "seconds": 2.272,
+          "answer": "高德官方天气：北京市，晴，12℃。高德报告时间：2026-11-05 19:39:32。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "amap_weather",
+              "elapsed_ms": 2267
+            },
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 2268
+            }
+          ],
+          "ok": true,
+          "model_requests": 0,
+          "grounded": false
+        },
+        {
+          "scenario": "cart_quote",
+          "seconds": 6.545,
+          "answer": "点餐方案，门店：麦当劳北京新东安二号餐厅；商品：麦香鱼；数量：2；取餐方式：外带 · 店内自提。本次费用 44.00 元。家人尚未开启这项真实交易执行，当前只准备方案。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 1073
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1272,
+              "input_chars": 3010,
+              "tool_count": 4
+            },
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "mcd_product_detail",
+              "elapsed_ms": 1030
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 2087,
+              "input_chars": 3486,
+              "tool_count": 4
+            },
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "mcd_update_cart",
+              "elapsed_ms": 2110
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 6523
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 1
+            }
+          ],
+          "ok": true,
+          "model_requests": 2,
+          "grounded": true
+        },
+        {
+          "scenario": "cart_quote",
+          "seconds": 4.711,
+          "answer": "点餐方案，门店：麦当劳北京新东安二号餐厅；商品：麦香鱼；数量：2；取餐方式：外带 · 店内自提。本次费用 44.00 元。家人尚未开启这项真实交易执行，当前只准备方案。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 1242
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1650,
+              "input_chars": 5160,
+              "tool_count": 4
+            },
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "mcd_update_cart",
+              "elapsed_ms": 3024
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 4692
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 0
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": true
+        },
+        {
+          "scenario": "cart_quote",
+          "seconds": 3.673,
+          "answer": "点餐方案，门店：麦当劳北京新东安二号餐厅；商品：麦香鱼；数量：2；取餐方式：外带 · 店内自提。本次费用 44.00 元。家人尚未开启这项真实交易执行，当前只准备方案。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 1239
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1622,
+              "input_chars": 6869,
+              "tool_count": 4
+            },
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "mcd_update_cart",
+              "elapsed_ms": 2018
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 3660
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 0
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": true
+        }
+      ],
+      "all_completed": true,
+      "within_8_seconds": true
+    },
+    {
+      "model": "deepseek-v4-1-flash-261017",
+      "business_writes": false,
+      "hardware_voice_tested": false,
+      "turns": [
+        {
+          "scenario": "chat",
+          "seconds": 1.692,
+          "answer": "一个人在家闷得慌，我陪您聊会儿。今天在家都忙了些什么呀？",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 1341
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1633,
+              "input_chars": 1444,
+              "tool_count": 0
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 1656
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 2
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": false
+        },
+        {
+          "scenario": "weather",
+          "seconds": 2.355,
+          "answer": "高德官方天气：北京市，晴，12℃。高德报告时间：2026-11-05 19:39:32。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "amap_weather",
+              "elapsed_ms": 2346
+            },
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 2349
+            }
+          ],
+          "ok": true,
+          "model_requests": 0,
+          "grounded": false
+        },
+        {
+          "scenario": "chat",
+          "seconds": 1.643,
+          "answer": "在呢，我陪您聊。这会儿家里就您一个人，平时这个点您一般爱做点啥呀？",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 1368
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1604,
+              "input_chars": 1489,
+              "tool_count": 0
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 1617
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 1
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": false
+        },
+        {
+          "scenario": "weather",
+          "seconds": 3.543,
+          "answer": "高德官方天气：北京市，晴，12℃。高德报告时间：2026-11-05 19:39:32。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "amap_weather",
+              "elapsed_ms": 3470
+            },
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 3471
+            }
+          ],
+          "ok": true,
+          "model_requests": 0,
+          "grounded": false
+        },
+        {
+          "scenario": "chat",
+          "seconds": 2.738,
+          "answer": "我在呢，您说，我听着。今天是不是家里太安静了，想找个人说说话？",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 2520
+            },
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 2708,
+              "input_chars": 1539,
+              "tool_count": 0
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 2721
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 0
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": false
+        },
+        {
+          "scenario": "weather",
+          "seconds": 2.563,
+          "answer": "高德官方天气：北京市，晴，12℃。高德报告时间：2026-11-05 19:39:32。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "amap_weather",
+              "elapsed_ms": 2556
+            },
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 2559
+            }
+          ],
+          "ok": true,
+          "model_requests": 0,
+          "grounded": false
+        },
+        {
+          "scenario": "cart_quote",
+          "seconds": 4.535,
+          "answer": "点餐方案，门店：麦当劳北京新东安二号餐厅；商品：麦香鱼；数量：2；取餐方式：外带 · 店内自提。本次费用 44.00 元。家人尚未开启这项真实交易执行，当前只准备方案。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1586,
+              "input_chars": 3010,
+              "tool_count": 4
+            },
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "mcd_update_cart",
+              "elapsed_ms": 2907
+            },
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 4511
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 4515
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 1
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": true
+        },
+        {
+          "scenario": "cart_quote",
+          "seconds": 3.863,
+          "answer": "点餐方案，门店：麦当劳北京新东安二号餐厅；商品：麦香鱼；数量：2；取餐方式：外带 · 店内自提。本次费用 44.00 元。家人尚未开启这项真实交易执行，当前只准备方案。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1801,
+              "input_chars": 4684,
+              "tool_count": 4
+            },
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "mcd_update_cart",
+              "elapsed_ms": 2016
+            },
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 3838
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 3845
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 0
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": true
+        },
+        {
+          "scenario": "cart_quote",
+          "seconds": 3.276,
+          "answer": "点餐方案，门店：麦当劳北京新东安二号餐厅；商品：麦香鱼；数量：2；取餐方式：外带 · 店内自提。本次费用 44.00 元。家人尚未开启这项真实交易执行，当前只准备方案。",
+          "timings": [
+            {
+              "type": "timing",
+              "stage": "model_request",
+              "elapsed_ms": 1189,
+              "input_chars": 6360,
+              "tool_count": 4
+            },
+            {
+              "type": "timing",
+              "stage": "tool",
+              "name": "mcd_update_cart",
+              "elapsed_ms": 2051
+            },
+            {
+              "type": "timing",
+              "stage": "first_text",
+              "elapsed_ms": 3257
+            },
+            {
+              "type": "timing",
+              "stage": "runtime_including_tools",
+              "elapsed_ms": 3263
+            },
+            {
+              "type": "timing",
+              "stage": "speech_composition",
+              "elapsed_ms": 0
+            }
+          ],
+          "ok": true,
+          "model_requests": 1,
+          "grounded": true
+        }
+      ],
+      "http": [
+        {
+          "reply_mode": "text",
+          "ok": true,
+          "seconds": 1.312,
+          "answer": "一个人在家确实容易闷，我陪您聊会儿。您今天在家都做了些什么呀？",
+          "speech_text": "一个人在家确实容易闷，我陪您聊会儿。您今天在家都做了些什么呀？"
+        },
+        {
+          "reply_mode": "speech",
+          "ok": true,
+          "seconds": 1.859,
+          "answer": "高德官方天气：北京市，晴，12℃。高德报告时间：2026-11-05 19:39:32。",
+          "speech_text": "高德官方天气：北京市，晴，12℃。高德报告时间：2026-11-05 19:39:32。"
+        }
+      ],
+      "all_completed": true,
+      "within_8_seconds": true
+    }
+  ],
+  "limitations": [
+    "Synthetic isolated public-landmark scenarios, not an exact replay of the historical 50.574-second cart turn.",
+    "Small sample, not a production P95/SLA guarantee.",
+    "No hardware microphone, synthesized audio playback, image/video, live transactions or payments tested.",
+    "No external subscriptions or low-latency service tiers enabled."
+  ],
+  "sources": [
+    "https://console.volcengine.com/ark/region:cn-beijing/docs/context-cache",
+    "https://console.volcengine.com/ark/region:cn-beijing/docs/deepseek-v4-1-flash"
+  ]
+}

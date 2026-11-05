@@ -132,7 +132,7 @@ def build_tools(dispatch):
 
         async def execute(self, **kwargs):
             try:
-                arguments = SCHEMAS[self.tool_name][0].model_validate(kwargs).model_dump(exclude_none=True)
+                arguments = SCHEMAS[self.tool_name][0].model_validate(kwargs).model_dump(exclude_none=True, exclude_unset=True)
             except ValidationError:
                 return self.error('工具参数无效，请根据用户需求补充正确参数。')
             result = await dispatch(self.tool_name, arguments)
