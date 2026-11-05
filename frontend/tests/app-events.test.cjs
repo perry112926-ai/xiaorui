@@ -14,7 +14,7 @@ function harness(options={}){
  class EventSource{constructor(){source=this;}close(){}}
  const module={exports:{}};
  const fetch=async (url,requestOptions)=>{requests.push({url,options:requestOptions});if(options.request){const result=await options.request(url,requestOptions);if(result)return result;}return{ok:true,headers:{get:()=> 'application/json'},json:async()=>url==='/api/health'?{mcd_configured:true,agent_configured:true}:url==='/api/contact/state'?{events:options.replay||[],cursor:0,pending:0}:url==='/api/chat/history'?{messages:[]}:url==='/api/actions'?{actions:[]}:url==='/api/contact/calls'?{id:'call-test-1',started_at:Date.now()/1000}:url.endsWith('/end')?{id:'call-test-1',started_at:Date.now()/1000-65,duration_seconds:65}: {accepted:true}};};
- vm.runInNewContext(code,{module,exports:module.exports,require:name=>name==='react'?hooks:name==='react-dom/client'?{createRoot:()=>({render(){}})}:name==='./useVoice'?{useVoice:(onFinal,onError,onSpeechStart)=>{callbacks={onFinal,onError,onSpeechStart};return voice;}}:name==='./Companion'?{Companion(){},CompanionAvatar(){},companionMood:()=> 'idle'}:name==='./SettingsDialog'?{SettingsDialog(){},useCompanionSettings:()=>({settings:{name:'小瑞',avatar:'portrait'},updateSettings(){}})}:name==='./CallBar'?{CallBar(){},callDuration:s=>String(s)}:name==='./ProfileCard'?{ProfileCard(){}}:name==='./location'?{locate:async()=>10}:name==='./payment'?paymentModule.exports:name==='./ActionCard'||name==='./ChoiceCards'?{}:name.endsWith('.css')?{}:name==='./money'?require('./load-money.cjs'):require(name),document:{getElementById:()=>({}),addEventListener(){},removeEventListener(){}},EventSource,fetch,crypto:require('node:crypto'),setInterval:()=>1,clearInterval(){},console});
+ vm.runInNewContext(code,{module,exports:module.exports,require:name=>name==='./CardHeading'?require('./load-card-heading.cjs'):name==='react'?hooks:name==='react-dom/client'?{createRoot:()=>({render(){}})}:name==='./useVoice'?{useVoice:(onFinal,onError,onSpeechStart)=>{callbacks={onFinal,onError,onSpeechStart};return voice;}}:name==='./Companion'?{Companion(){},CompanionAvatar(){},companionMood:()=> 'idle'}:name==='./SettingsDialog'?{SettingsDialog(){},useCompanionSettings:()=>({settings:{name:'小瑞',avatar:'portrait'},updateSettings(){}})}:name==='./CallBar'?{CallBar(){},callDuration:s=>String(s)}:name==='./ProfileCard'?{ProfileCard(){}}:name==='./location'?{locate:async()=>10}:name==='./payment'?paymentModule.exports:name==='./ActionCard'||name==='./ChoiceCards'?{}:name.endsWith('.css')?{}:name==='./money'?require('./load-money.cjs'):require(name),document:{getElementById:()=>({}),addEventListener(){},removeEventListener(){}},EventSource,fetch,crypto:require('node:crypto'),setInterval:()=>1,clearInterval(){},console});
  const render=()=>{index=0;return module.exports.App();};
  const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
  return{render,flush,spoken,feedback,voice,requests,paymentNavigations,get cancellations(){return cancellations;},get callbacks(){return callbacks;},emit:event=>source.onmessage({data:JSON.stringify(event)})};
@@ -255,4 +255,15 @@ test('voice final confirmation opens the returned payment page once and ends the
  h.emit(event);await h.flush();assert.equal(h.paymentNavigations.length,1);
  assert.equal(h.voice.inCall,false);
  const restored=harness({replay:[event]});restored.render();await restored.flush();restored.render();assert.deepEqual(restored.paymentNavigations,[]);
+});
+
+test('legacy store, meal, order and location cards each expose a purpose heading',async()=>{
+ const h=harness();h.render();await h.flush();h.render();
+ h.emit(reply('stores','',[{type:'stores',stores:[{code:'demo',name:'演示门店',address:'测试地址'}]}]));
+ h.emit(reply('meals','',[{type:'meals',meals:[{product_code:'demo',name:'演示餐品',amount_cents:2500,choices:[],request:{}}]}]));
+ h.emit(reply('plan','',[{type:'plan',plan:{id:'demo',status:'awaiting_confirmation',version:1,confirmation_token:'test',expires_at:Date.now()/1000+300,amount_cents:2500,summary:{product_name:'演示餐品',quantity:1,choices:[],store_name:'演示门店',store_address:'测试地址',take_way:'到店自取'}}}]));
+ h.emit(reply('location','请授权定位后继续'));
+ const titles=all(h.render(),n=>n.type?.name==='CardHeading').map(n=>n.props.title);
+ for(const title of ['选择方便的取餐门店','挑选一份喜欢的餐品','提供本次位置'])assert.ok(titles.includes(title),title);
+ assert.ok(titles.includes('核对您的点餐方案')||all(h.render(),n=>n.props?.plan?.id==='demo').length,'legacy proposals keep a heading or use the unified titled action card');
 });

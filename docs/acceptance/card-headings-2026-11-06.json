@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-06",
+  "scope": "card titles and presentation",
+  "synthetic_browser_fixtures": true,
+  "business_calls": false,
+  "covered_cards": [
+    "餐品候选",
+    "通用服务候选及车型/门店/地址标题",
+    "旧门店与餐品卡",
+    "旧点餐方案",
+    "多服务确认与进度卡",
+    "取消方案",
+    "定位授权"
+  ],
+  "browser": {
+    "desktop_rendered": true,
+    "mobile_width": 390,
+    "mobile_document_width": 390,
+    "mobile_heading_widths": [
+      227,
+      223
+    ],
+    "candidate_click_submitted_original_prompt": true,
+    "submitted_prompt": "选择第1个车型：经济型",
+    "confirmation_not_executed": true
+  },
+  "verification": {
+    "isolated_task_snapshot_frontend_tests": 83,
+    "frontend_build": true,
+    "parallel_refactor_excluded_from_commit": true
+  },
+  "limits": [
+    "界面验收使用合成候选与示例报价，不代表真实业务接口报价或交易通过",
+    "手机为浏览器窄屏验证，不是物理手机现场测试"
+  ]
+}

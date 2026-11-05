@@ -7,7 +7,7 @@ const compiled=ts.transpileModule(fs.readFileSync(require.resolve('../src/Action
  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,esModuleInterop:true}
 }).outputText;
 const moduleObject={exports:{}};
-vm.runInNewContext(compiled,{module:moduleObject,exports:moduleObject.exports,require:name=>name==='./payment'?{openOfficialPayment:()=>false}:name==='./money'?require('./load-money.cjs'):require(name),console,setInterval,clearInterval});
+vm.runInNewContext(compiled,{module:moduleObject,exports:moduleObject.exports,require:name=>name==='./CardHeading'?require('./load-card-heading.cjs'):name==='./payment'?{openOfficialPayment:()=>false}:name==='./money'?require('./load-money.cjs'):require(name),console,setInterval,clearInterval});
 const {ActionCard}=moduleObject.exports;
 function card(overrides={}){
  const plan={id:'ours',provider:'mcd',action:'create',status:'created',summary:{address:'测试大楼',product:'麦香鱼 × 1；薯条 × 1'},
@@ -34,7 +34,7 @@ test('pending meal does not offer cancellation of a real order',()=>{
  assert.match(html,/确认下单/);assert.doesNotMatch(html,/查看取消条件/);
 });
 test('Luckin is described as a drink plan rather than a general meal service',()=>{
- const html=card({provider:'luckin'});assert.match(html,/饮品方案/);assert.doesNotMatch(html,/点餐方案|查看取消条件/);
+ const html=card({provider:'luckin'});assert.match(html,/饮品订单与进度/);assert.doesNotMatch(html,/点餐方案|查看取消条件/);
 });
 
 test('expired McDonald proposal offers repricing instead of a disabled checkout dead end',()=>{
@@ -42,4 +42,16 @@ test('expired McDonald proposal offers repricing instead of a disabled checkout 
  assert.match(html,/重新核价 · 不下单/);
  assert.doesNotMatch(html,/<button disabled="">重新核价/);
  assert.doesNotMatch(html,/去付款/);
+});
+
+test('confirmation and progress cards introduce their purpose without implying success',()=>{
+ for(const [overrides,title,status] of [
+  [{status:'awaiting_confirmation',order:undefined},'核对您的点餐方案','请您核对'],
+  [{provider:'didi',status:'awaiting_confirmation',order:undefined},'核对您的出行方案','请您核对'],
+  [{provider:'luckin',status:'awaiting_confirmation',order:undefined},'核对您的饮品方案','请您核对'],
+  [{status:'unknown'},'点餐订单与进度','结果待核查'],
+  [{action:'cancel',status:'awaiting_confirmation'},'取消订单方案','请您核对'],
+ ]){
+  const html=card(overrides);assert.match(html,new RegExp('<h3>'+title+'</h3>'));assert.match(html,new RegExp('card-heading-status[^>]*>'+status));
+ }
 });

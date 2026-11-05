@@ -91,3 +91,18 @@
 .food-choice-fees{font-size:15px;line-height:1.6;color:#59645d;margin:-10px 0 12px}@media(min-width:900px){.food-choice-grid.ready-meals{grid-template-columns:repeat(3,minmax(0,1fr))}.ready-meals .food-choice-content{padding:16px}.ready-meals .food-choice-name{font-size:21px}}
 
 .confirmed-meal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:16px}.confirmed-meal-grid figure{margin:0;background:#f6f6ee;padding:12px;border-radius:14px}.confirmed-meal-grid img{width:100%;height:120px;object-fit:contain}.confirmed-meal-grid figcaption{font-size:17px;line-height:1.5;margin-top:8px}
+
+/* Every rich reply begins with a clear purpose, context and next step. */
+.choice-panel{max-width:760px;margin-top:18px;padding:24px;border:1px solid #dce5dd;border-radius:22px;background:#fff;box-shadow:0 4px 20px #263d2c05}
+.card-heading{display:flex;align-items:flex-start;gap:14px;margin:0 0 22px;padding-bottom:20px;border-bottom:1px solid #e9eee8}
+.card-heading-icon{display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;border-radius:14px;background:#edf3ed;color:#3f694d}
+.card-heading-icon svg{width:24px;height:24px}.card-heading-copy{flex:1;min-width:0}.card-heading-eyebrow{display:block;font-size:14px;line-height:1.5;letter-spacing:.04em;color:#68796c;margin-bottom:5px}
+.card-heading .card-heading-copy h3{display:block;font-size:24px;font-weight:650;line-height:1.45;letter-spacing:.01em;color:#293d30;margin:0}
+.card-heading .card-heading-copy p{font-size:16px;line-height:1.65;color:#67756b;margin:7px 0 0}
+.card-heading-status{flex-shrink:0;max-width:42%;border:1px solid #e0e9df;background:#f4f7f1;color:#536a50;font-size:13px;line-height:1.5;padding:5px 10px;border-radius:9px;overflow-wrap:anywhere}
+.choice-panel .service-choice-grid,.choice-panel .meal-grid{margin-top:0}.choice-panel .store-card{background:#fafbf8;border-color:#e2e8df}.choice-panel .store-card:hover:not(:disabled){background:#f0f5ed}
+.choice-panel .store-card strong{color:#2e4435;line-height:1.5}.choice-panel .store-card span{color:#637166;line-height:1.65}.choice-panel .food-choice-note{margin-top:18px}
+.order-product-name{font-size:22px;line-height:1.5;color:#2b3c30;margin:0 0 14px}.order-product-name small{font-size:18px;color:#69786b;font-weight:400;margin-left:10px}
+.message-body:has(.choice-panel){flex:1 1 0;width:auto}.location-prompt-card .card-actions{margin-top:0}
+@media(max-width:520px){.choice-panel{padding:18px;border-radius:19px}.card-heading{gap:10px;margin-bottom:18px;padding-bottom:17px;flex-wrap:wrap}.card-heading-icon{width:38px;height:38px;flex-basis:38px;border-radius:12px}.card-heading-icon svg{width:22px;height:22px}.card-heading .card-heading-copy h3{font-size:21px}.card-heading .card-heading-copy p{font-size:15px}.card-heading-status{max-width:100%;margin-left:48px;margin-top:-4px}.food-choices .food-choice-photo{width:34%}.food-choices .food-choice-content{padding:14px}.food-choices .food-choice-name{font-size:20px}}
+@media(max-width:520px){.card-heading{display:grid;grid-template-columns:38px minmax(0,1fr);align-items:start}.card-heading-status{grid-column:2;justify-self:start;margin:0;max-width:100%}}
