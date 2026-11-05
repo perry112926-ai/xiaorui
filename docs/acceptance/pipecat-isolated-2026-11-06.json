@@ -1,0 +1,363 @@
+{
+  "checked_at": "2026-11-06T00:49:04.258581+08:00",
+  "framework_version": "1.15.0",
+  "result": "framework_viable_in_isolation_integration_gate_not_passed",
+  "production_integrated": false,
+  "production_environment_modified": false,
+  "framework_validation": {
+    "checked_at": "2026-11-06T00:49:04.258581+08:00",
+    "framework": "pipecat-ai",
+    "version": "1.15.0",
+    "model": "deepseek-v4-1-flash-261017",
+    "synthetic_dialogue": true,
+    "personal_profile_loaded": false,
+    "business_tools": false,
+    "production_integrated": false,
+    "physical_microphone": false,
+    "browser_playback_tested": false,
+    "asr_endpoint": "explicit_finish_after_last_packet",
+    "vad_boundary_in_end_to_end_measurement": false,
+    "turns": [
+      {
+        "input": "我一个人在家有点闷，陪我聊一会吧。",
+        "answer": "好的呀，一个人待着确实容易闷，您想聊点啥都行。",
+        "first_text_ms": 1030,
+        "first_pcm_ms": 1433,
+        "llm_end_ms": 1113,
+        "pcm_bytes": 201500,
+        "errors": [],
+        "audio_before_model_end": false,
+        "asr": {
+          "synthetic_audio": true,
+          "physical_microphone": false,
+          "partials": 8,
+          "speech_end_to_transcript_ms": 323
+        },
+        "speech_end_to_pcm_ms": 1756
+      },
+      {
+        "input": "我今天去了公园，看见好多花。",
+        "answer": "公园的花是挺好看的，您有没有拍几张照片？",
+        "first_text_ms": 1068,
+        "first_pcm_ms": 1611,
+        "llm_end_ms": 1285,
+        "pcm_bytes": 171272,
+        "errors": [],
+        "audio_before_model_end": false,
+        "asr": {
+          "synthetic_audio": true,
+          "physical_microphone": false,
+          "partials": 6,
+          "speech_end_to_transcript_ms": 205
+        },
+        "speech_end_to_pcm_ms": 1816
+      },
+      {
+        "input": "是黄色的，你猜是什么花？",
+        "answer": "黄色的花可太多啦，我猜是迎春花或者小雏菊？",
+        "first_text_ms": 720,
+        "first_pcm_ms": 1176,
+        "llm_end_ms": 849,
+        "pcm_bytes": 210300,
+        "errors": [],
+        "audio_before_model_end": false,
+        "asr": {
+          "synthetic_audio": true,
+          "physical_microphone": false,
+          "partials": 4,
+          "speech_end_to_transcript_ms": 115
+        },
+        "speech_end_to_pcm_ms": 1291
+      },
+      {
+        "input": "别猜了，我也不知道，我们换个话题。",
+        "answer": "好，那咱聊点别的，您平时在家喜欢做什么打发时间？",
+        "first_text_ms": 848,
+        "first_pcm_ms": 1325,
+        "llm_end_ms": 1000,
+        "pcm_bytes": 210716,
+        "errors": [],
+        "audio_before_model_end": false,
+        "asr": {
+          "synthetic_audio": true,
+          "physical_microphone": false,
+          "partials": 8,
+          "speech_end_to_transcript_ms": 119
+        },
+        "speech_end_to_pcm_ms": 1444
+      },
+      {
+        "input": "说个周末在家能做的轻松活动。",
+        "answer": "可以试试整理一下家里的老照片，翻着翻着挺有意思的，也不累。",
+        "first_text_ms": 780,
+        "first_pcm_ms": 1393,
+        "llm_end_ms": 1026,
+        "pcm_bytes": 229026,
+        "errors": [],
+        "audio_before_model_end": false,
+        "asr": {
+          "synthetic_audio": true,
+          "physical_microphone": false,
+          "partials": 5,
+          "speech_end_to_transcript_ms": 124
+        },
+        "speech_end_to_pcm_ms": 1517
+      },
+      {
+        "input": "不想看电视还有别的办法吗？",
+        "answer": "那就泡杯茶，找本轻松的书翻翻，或者听听音乐，都挺解闷的。",
+        "first_text_ms": 911,
+        "first_pcm_ms": 1569,
+        "llm_end_ms": 1234,
+        "pcm_bytes": 240930,
+        "errors": [],
+        "audio_before_model_end": false,
+        "asr": {
+          "synthetic_audio": true,
+          "physical_microphone": false,
+          "partials": 6,
+          "speech_end_to_transcript_ms": 178
+        },
+        "speech_end_to_pcm_ms": 1747
+      },
+      {
+        "input": "你刚才建议的活动用一句话再说一下。",
+        "answer": "看看老照片或者泡杯茶翻翻书，在家轻松又解闷。",
+        "first_text_ms": 1244,
+        "first_pcm_ms": 1693,
+        "llm_end_ms": 1372,
+        "pcm_bytes": 210970,
+        "errors": [],
+        "audio_before_model_end": false,
+        "asr": {
+          "synthetic_audio": true,
+          "physical_microphone": false,
+          "partials": 5,
+          "speech_end_to_transcript_ms": 247
+        },
+        "speech_end_to_pcm_ms": 1940
+      },
+      {
+        "input": "我还没说完，我想想。",
+        "answer": "好，您慢慢想，想好了再跟我说。",
+        "first_text_ms": 877,
+        "first_pcm_ms": 1195,
+        "llm_end_ms": 879,
+        "pcm_bytes": 133432,
+        "errors": [],
+        "audio_before_model_end": false,
+        "asr": {
+          "synthetic_audio": true,
+          "physical_microphone": false,
+          "partials": 5,
+          "speech_end_to_transcript_ms": 215
+        },
+        "speech_end_to_pcm_ms": 1410
+      },
+      {
+        "input": "想好了，我想听一个很短的小故事。",
+        "answer": "从前有只小猫，总爱趴在窗台上看云，一看就是一下午。",
+        "first_text_ms": 1101,
+        "first_pcm_ms": 1501,
+        "llm_end_ms": 1226,
+        "pcm_bytes": 249056,
+        "errors": [],
+        "audio_before_model_end": false,
+        "asr": {
+          "synthetic_audio": true,
+          "physical_microphone": false,
+          "partials": 8,
+          "speech_end_to_transcript_ms": 84
+        },
+        "speech_end_to_pcm_ms": 1585
+      },
+      {
+        "input": "今天先聊到这里吧。",
+        "answer": "好，那您早点歇着，有空咱再聊。",
+        "first_text_ms": 846,
+        "first_pcm_ms": 1347,
+        "llm_end_ms": 1036,
+        "pcm_bytes": 133470,
+        "errors": [],
+        "audio_before_model_end": false,
+        "asr": {
+          "synthetic_audio": true,
+          "physical_microphone": false,
+          "partials": 2,
+          "speech_end_to_transcript_ms": 165
+        },
+        "speech_end_to_pcm_ms": 1512
+      }
+    ],
+    "transcript_to_pcm": {
+      "median_ms": 1413,
+      "p95_ms": 1693
+    },
+    "pipeline_passed": true,
+    "streaming_probe": {
+      "input": "讲一个有六句话的小故事，每句话另起一行，故事开头直接进入情节。",
+      "answer": "雨点打在窗户上，他抬头看了一眼。\n桌上的咖啡已经凉了。\n他拿起外套准备出门。\n门口的信箱里塞着一封没有署名的信。\n他拆开信，里面只有一行字。\n他笑了笑，把信折好放进口袋。",
+      "first_text_ms": 836,
+      "first_pcm_ms": 1385,
+      "llm_end_ms": 1480,
+      "pcm_bytes": 765162,
+      "errors": [],
+      "audio_before_model_end": true
+    },
+    "interruption": {
+      "pcm_after_300ms": 0,
+      "server_frame_only": true,
+      "playback_stop_not_tested": true
+    },
+    "streaming_passed": true,
+    "interruption_passed": true,
+    "integration_gate_passed": false,
+    "remaining_gates": [
+      "latency_target",
+      "automatic_turn_boundaries",
+      "browser_audio_and_interrupt",
+      "physical_microphone_echo"
+    ],
+    "gate": {
+      "core_framework_passed": true,
+      "integration_gate_passed": false,
+      "checks": {
+        "ten_successful_turns": true,
+        "streaming_before_model_end": true,
+        "server_cancellation": true,
+        "webrtc_bidirectional_audio": true,
+        "chinese_complete_and_incomplete_turns": true,
+        "ten_real_asr_turns": true,
+        "latency_target": false,
+        "automatic_turn_boundaries": false,
+        "browser_audio_and_interrupt": false,
+        "physical_microphone_echo": false
+      },
+      "speech_end_to_server_pcm": {
+        "median_ms": 1551,
+        "p95_ms": 1940,
+        "samples": 10
+      },
+      "remaining_gates": [
+        "latency_target",
+        "automatic_turn_boundaries",
+        "browser_audio_and_interrupt",
+        "physical_microphone_echo"
+      ]
+    }
+  },
+  "webrtc": {
+    "small_webrtc": {
+      "synthetic_tones": true,
+      "loopback_only": true,
+      "physical_microphone": false,
+      "browser_tested": false,
+      "elapsed_ms": 3770,
+      "frames": {
+        "client": 25,
+        "server": 25
+      },
+      "non_silent_both_directions": true
+    }
+  },
+  "chinese_turn_model": {
+    "synthetic_chinese_audio": true,
+    "physical_microphone": false,
+    "cases": [
+      {
+        "case": "fragment",
+        "decision": "INCOMPLETE",
+        "inference_ms": 471,
+        "vad_speech_frames": 77
+      },
+      {
+        "case": "complete",
+        "decision": "COMPLETE",
+        "inference_ms": 66,
+        "vad_speech_frames": 298
+      }
+    ],
+    "fragment_retained": true,
+    "complete_detected": true
+  },
+  "comparison": [
+    {
+      "model": "deepseek-v4-1-flash-261017",
+      "turns": 2,
+      "transcript_to_pcm": {
+        "median_ms": 1364,
+        "p95_ms": 1390
+      },
+      "pipeline_passed": true,
+      "error_type": null
+    },
+    {
+      "model": "deepseek-v4-1-flash-261017",
+      "turns": 10,
+      "transcript_to_pcm": null,
+      "pipeline_passed": false,
+      "error_type": "TimeoutError"
+    },
+    {
+      "model": "deepseek-v4-1-flash-261017",
+      "turns": 10,
+      "transcript_to_pcm": {
+        "median_ms": 1413,
+        "p95_ms": 1693
+      },
+      "pipeline_passed": true,
+      "error_type": null
+    },
+    {
+      "model": "deepseek-v4-1-flash-261017",
+      "turns": 2,
+      "transcript_to_pcm": {
+        "median_ms": 1744,
+        "p95_ms": 2125
+      },
+      "pipeline_passed": true,
+      "error_type": null
+    },
+    {
+      "model": "doubao-seed-2-1-pro-260915",
+      "turns": 10,
+      "transcript_to_pcm": {
+        "median_ms": 2510,
+        "p95_ms": 2976
+      },
+      "pipeline_passed": true,
+      "error_type": null
+    }
+  ],
+  "lighter_models": [
+    {
+      "model": "doubao-seed-2-1-lite-260915",
+      "status": 404,
+      "error_code": "ModelNotOpen"
+    },
+    {
+      "model": "doubao-seed-2-0-lite-260428",
+      "status": 404,
+      "error_code": "ModelNotOpen"
+    },
+    {
+      "model": "doubao-seed-2-0-mini-260428",
+      "status": 404,
+      "error_code": "ModelNotOpen"
+    }
+  ],
+  "limits": [
+    "合成音频，不是真人麦克风；只有首段服务端PCM，没有浏览器或耳边首音测量",
+    "ASR在音频末尾显式finish，自动轮次判断另做独立模型试验，不能将耗时直接当成完整电话时延",
+    "WebRTC为两个本地Python端的双向非静音传输，不是浏览器、跨公网或真实通话",
+    "打断为框架系统事件注入，不是物理开口触发；未验证实际播放器停止及已听历史截断",
+    "一次十轮后的长回复子试验超时，后续重跑通过，不保证长期稳定性",
+    "原生端到端实时模型未验证；本地缺少该服务所需独立鉴权配置，未使用猜测凭证调用"
+  ],
+  "sources": [
+    "https://github.com/pipecat-ai/pipecat/blob/main/examples/getting-started/06-voice-agent.py",
+    "https://docs.pipecat.ai/api-reference/server/services/transport/small-webrtc",
+    "https://docs.pipecat.ai/api-reference/server/utilities/turn-management/user-turn-strategies",
+    "https://docs.volcengine.com/docs/doubao-voice/large-model-streaming-automatic-speech-recognition-api-1?lang=en"
+  ]
+}

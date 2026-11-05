@@ -1,0 +1,5 @@
+# Isolated verification environment; not a production dependency.
+pipecat-ai[webrtc,silero]==1.15.0
+httpx>=0.28,<1
+python-dotenv>=1,<2
+websockets>=15,<17
