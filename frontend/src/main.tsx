@@ -16,11 +16,11 @@ type Selection={store_code:string;product_code:string;quantity:number;rounds:{ro
 type Meal={product_code:string;name:string;image?:string;amount_cents:number;choices:string[];request:Selection};
 type Plan={id:string;version:number;status:string;amount_cents:number;summary:{store_name:string;store_address:string;product_name:string;quantity:number;choices:string[];take_way:string};expires_at:number;confirmation_token:string;order?:{order_id?:string;payment_url?:string};error?:string};
 type ImageMessage={id:string;url:string};
-type Message={pending?:boolean;progress?:string;stream?:string;replyTo?:string;call?:PhoneCall;locationRequest?:boolean;images?:ImageMessage[];client_id?:string;message_id?:string;delivery?:string;id:number;role:'user'|'assistant';text:string;speech_text?:string;kind?:'stores'|'meals'|'plan';stores?:Store[];meals?:Meal[];plan?:Plan;actionPlan?:ActionPlan;choices?:ChoiceCard[]};
+type Message={ackFor?:string;task_id?:string;pending?:boolean;progress?:string;stream?:string;replyTo?:string;call?:PhoneCall;locationRequest?:boolean;images?:ImageMessage[];client_id?:string;message_id?:string;delivery?:string;id:number;role:'user'|'assistant';text:string;speech_text?:string;kind?:'stores'|'meals'|'plan';stores?:Store[];meals?:Meal[];plan?:Plan;actionPlan?:ActionPlan;choices?:ChoiceCard[]};
 type Health={read_only?:boolean;order_execution_enabled:boolean;mcd_configured:boolean;agent_configured?:boolean};
 type ChatEvent={type:'location_request'}|{type:'stores';stores:Store[]}|{type:'meals';meals:Meal[]}|{type:'plan';plan:Plan}|{type:'action_plan';plan:ActionPlan}|{type:'service_choices';choices:ChoiceCard[]}|{type:'service_result';provider:string;data:unknown}|{type:'query_result';provider:string;tool:string;success:boolean;source:string;data:unknown};
 
-type ChatResponse={text:string;speech_text?:string;events:ChatEvent[];conversation_reset?:boolean};
+type ChatResponse={task_id?:string;speech_deferred?:boolean;text:string;speech_text?:string;events:ChatEvent[];conversation_reset?:boolean};
 const yuan=(n:number)=>`¥${(n/100).toFixed(2)}`;
 const labels:Record<string,string>={awaiting_confirmation:'请您确认',needs_review:'价格有变化，请再次确认',rechecking:'正在重新核价',submitting:'正在创建订单',created:'订单已创建，待支付',unknown:'订单结果待核查',failed:'未能创建订单',cancelled:'方案已取消',superseded:'方案已替换',expired:'报价已过期'};
 async function api<T>(url:string,body?:unknown):Promise<T>{const r=await fetch(url,{method:body===undefined?'GET':'POST',headers:body===undefined?undefined:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});if(!r.headers.get('content-type')?.includes('application/json'))throw Error('本地服务暂时不可用，请稍后重试。');const d=await r.json();if(!r.ok)throw Error(typeof d.detail==='string'?d.detail:'这一步暂时没有完成，请稍后重试。');return d}
@@ -33,7 +33,7 @@ export function MessageProgress({text,stream}:{text:string;stream?:string}){
 }
 export function App(){
  const [health,setHealth]=useState<Health>();const [messages,setMessages]=useState<Message[]>([]);const [input,setInput]=useState('');const [stores,setStores]=useState<Store[]>([]);const [busy,setBusy]=useState('正在恢复对话');const [error,setError]=useState('');const [meals,setMeals]=useState<Meal[]>([]);const [plan,setPlan]=useState<Plan>();const [modal,setModal]=useState(false);const [now,setNow]=useState(Date.now());const counter=useRef(0);const lock=useRef(false);const end=useRef<HTMLDivElement>(null);const dialog=useRef<HTMLDivElement>(null);
- const [ready,setReady]=useState(false);const [chatPending,setChatPending]=useState(0);const [contactStatus,setContactStatus]=useState('');const [phoneProgress,setPhoneProgress]=useState('');const phonePendingIds=useRef(new Set<string>());const pendingIds=useRef(new Set<string>());const interrupted=useRef(false);
+ const [ready,setReady]=useState(false);const [chatPending,setChatPending]=useState(0);const [contactStatus,setContactStatus]=useState('');const [phoneProgress,setPhoneProgress]=useState('');const phonePendingIds=useRef(new Set<string>());const pendingIds=useRef(new Set<string>());const acceptedIds=useRef(new Set<string>());const interrupted=useRef(false);
  const [inputMode,setInputMode]=useState<'text'|'voice'>('text');const [extrasOpen,setExtrasOpen]=useState(false);const [attachments,setAttachments]=useState<ImageMessage[]>([]);const [uploading,setUploading]=useState(false);const imageInput=useRef<HTMLInputElement>(null);const inflightSends=useRef(new Set<string>());
  const [profileOpen,setProfileOpen]=useState(false);
  const [locationStatus,setLocationStatus]=useState('');const [locationBusy,setLocationBusy]=useState(false);const locationFresh=useRef(0);const locating=useRef<Promise<boolean>|null>(null);
@@ -62,12 +62,15 @@ export function App(){
  }
  function updateProgress(ids:string[],patch:Partial<Message>){setMessages(old=>old.map(m=>m.pending&&ids.includes(m.message_id||'')?{...m,...patch}:m));}
  function receive(e:any,replay=false){
+  if(e.type==='speech_ready'){setMessages(old=>old.map(m=>m.task_id===e.task_id?{...m,speech_text:e.speech_text}:m));return;}
   if(e.type==='call_ended'){showCall(e.call);return;}
   if(e.type==='accepted'){
+   if(acceptedIds.current.has(e.message_id))return;acceptedIds.current.add(e.message_id);
    pendingIds.current.add(e.message_id);
    if(e.call_id){if(e.call_id===activePhone.current?.id)phonePendingIds.current.add(e.message_id);setChatPending(pendingIds.current.size);return;}
    setMessages(old=>old.some(m=>m.client_id===e.client_id)?old.map(m=>m.client_id===e.client_id?{...m,message_id:e.message_id,delivery:'已送达',images:e.images}:m):[...old,{id:++counter.current,role:'user',text:e.text,images:e.images,client_id:e.client_id,message_id:e.message_id,delivery:'已送达'}]);
-   setMessages(old=>{const existing=old.find(m=>m.pending&&m.replyTo===e.client_id);if(existing)return old.map(m=>m===existing?{...m,message_id:e.message_id,progress:'消息已收到，正在准备回复'}:m);const at=old.findIndex(m=>m.client_id===e.client_id);const progress:Message={id:++counter.current,role:'assistant',text:'',pending:true,replyTo:e.client_id,message_id:e.message_id,progress:'消息已收到，正在准备回复'};return at<0?[...old,progress]:[...old.slice(0,at+1),progress,...old.slice(at+1)];});
+   if(e.ack_text)setMessages(old=>{const at=old.findIndex(m=>m.client_id===e.client_id);const ack:Message={id:++counter.current,role:'assistant',text:e.ack_text,ackFor:e.message_id};return at<0?[...old,ack]:[...old.slice(0,at+1),ack,...old.slice(at+1)];});
+   setMessages(old=>{const existing=old.find(m=>m.pending&&m.replyTo===e.client_id);if(existing)return old.map(m=>m===existing?{...m,message_id:e.message_id,progress:'消息已收到，正在准备回复'}:m);const at=old.reduce((last,m,index)=>m.client_id===e.client_id||m.ackFor===e.message_id?index:last,-1);const progress:Message={id:++counter.current,role:'assistant',text:'',pending:true,replyTo:e.client_id,message_id:e.message_id,progress:'消息已收到，正在准备回复'};return at<0?[...old,progress]:[...old.slice(0,at+1),progress,...old.slice(at+1)];});
   }else if(e.type==='started'){interrupted.current=false;if(e.call_id){if(e.call_id===activePhone.current?.id)setPhoneProgress('正在听，也在帮您处理');}else updateProgress(e.message_ids||[e.message_id],{progress:'正在理解您的消息'});}
   else if(e.type==='delta'&&!interrupted.current&&!e.call_id){setMessages(old=>old.map(m=>m.pending&&m.message_id===e.message_id?{...m,stream:((m.stream||'')+e.text).slice(-12000),progress:'正在回复'}:m));}
   else if(e.type==='progress'){if(e.call_id){if(e.call_id===activePhone.current?.id)setPhoneProgress(e.text);}else updateProgress([e.message_id],{progress:e.text});}
@@ -109,12 +112,12 @@ export function App(){
  async function release(){if(plan&&['awaiting_confirmation','needs_review','expired'].includes(plan.status)){const d=await api<{plan:Plan}>(`/api/plans/${plan.id}/cancel`,{});update(d.plan)}}
  function displayResponse(d:ChatResponse,phoneTurn=false,replyIds:string[]=[]){
    const incoming:Omit<Message,'id'>[]=[];
-   const response:Omit<Message,'id'>={role:'assistant',text:d.text,speech_text:d.speech_text,locationRequest:/定位|上车.*位置/.test(d.text)};
+   const response:Omit<Message,'id'>={task_id:d.task_id,role:'assistant',text:d.text,speech_text:d.speech_text,locationRequest:/定位|上车.*位置/.test(d.text)};
    const events=(d.events??[]).filter(event=>['stores','meals','plan','action_plan','service_choices','location_request'].includes(event.type));
    if(!phoneTurn&&!events.length&&(d.text||d.speech_text))incoming.push(response);
 
    events.forEach((event,i)=>{
-    const message:Omit<Message,'id'>={role:'assistant',text:!phoneTurn&&i===0?d.text:'',speech_text:!phoneTurn&&i===0?d.speech_text:undefined,locationRequest:event.type==='location_request'||(i===0&&/定位|上车.*位置/.test(d.text))};
+    const message:Omit<Message,'id'>={task_id:i===0?d.task_id:undefined,role:'assistant',text:!phoneTurn&&i===0?d.text:'',speech_text:!phoneTurn&&i===0?d.speech_text:undefined,locationRequest:event.type==='location_request'||(i===0&&/定位|上车.*位置/.test(d.text))};
     if(event.type==='stores'){setStores(event.stores);setMeals([]);message.kind='stores';message.stores=event.stores}
     if(event.type==='meals'){setMeals(event.meals);message.kind='meals';message.meals=event.meals}
     if(event.type==='plan'){update(event.plan);message.kind='plan';message.plan=event.plan}
@@ -136,7 +139,7 @@ export function App(){
   }finally{inflightSends.current.delete(submissionKey);}
  }
  async function transmit(text:string,client_id:string,images:ImageMessage[]=[],phoneId?:string){
-  try{await api('/api/contact/messages',{text,client_id,image_ids:images.map(i=>i.id),...(phoneId?{call_id:phoneId}:{})});}
+  try{const receipt=await api<{event?:any}>('/api/contact/messages',{text,client_id,image_ids:images.map(i=>i.id),reply_mode:phoneId||inputMode==='voice'?'speech':'text',...(phoneId?{call_id:phoneId}:{})});if(receipt.event)receiver.current(receipt.event);}
   catch(e){setMessages(old=>old.filter(m=>!m.pending||m.replyTo!==client_id).map(m=>m.client_id===client_id&&m.delivery!=='已送达'?{...m,delivery:'发送结果待核实'}:m));setError(e instanceof Error?e.message:'连接已断开，可以点击消息旁重试；不会重复提交同一条消息。');if(phoneId&&phoneId===activePhone.current?.id)void voice.speak('刚才那句话没有确认发送成功，请您稍后再说一次。');}
  }
  async function selectImages(files:FileList|null){

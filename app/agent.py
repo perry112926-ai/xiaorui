@@ -29,7 +29,8 @@ from app.didi_scenario import DidiScenario
 from app.mcd_scenario import McdScenario
 from app.location import LocationStore
 from app.luckin_scenario import LuckinScenario
-from app.contact_events import notify, contact_media, contact_call
+from app.contact_events import notify, contact_media, contact_call, contact_reply_mode
+from app.text_delivery import quick_answer, lightweight_chat
 from app.speech import SpeechComposer, context as speech_context, fallback as speech_fallback
 
 
@@ -99,6 +100,7 @@ class Session:
     forget_epoch: int = 0
     services: dict = field(default_factory=dict)
     speech_turn: dict | None = None
+    defer_speech: bool = False
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     touched: float = field(default_factory=time.monotonic)
 
@@ -139,6 +141,8 @@ class AgentService:
             self.actions.register(provider, scenario)
             self.scenario_tools.update({name:scenario for name in scenario.schemas})
         self.sessions = OrderedDict()
+        self._speech_jobs = {}
+        self._speech_slots = asyncio.Semaphore(2)
 
     def _config(self):
         env = dotenv_values(ROOT / '.env')
@@ -294,6 +298,11 @@ class AgentService:
             return {'error': '资料操作参数无效，请明确要保存或忘记的内容。'}
 
     async def _run(self, owner, session, text, events, trace):
+        if contact_reply_mode.get()=='text' and not contact_media.get():
+            brief=quick_answer(text)
+            if brief:
+                trace.append({'type':'host.quick_answer'})
+                return brief
         if (not session.display and not self.locations.get(owner)
                 and re.fullmatch(r'(?:我)?这(?:里|边|儿)(?:现在|今天|明天|这会儿)?(?:会不会|会|在|有没有)?(?:下雨|下不下雨|下雪|天气|冷不冷|热不热)(?:怎么样|如何)?[吗呢啊呀吧？?。！!]*',text.strip())):
             trace.append({'type':'host.weather_location_missing'})
@@ -338,7 +347,13 @@ class AgentService:
 
         owner_key = hashlib.sha256(owner.encode()).hexdigest()[:32]
         key = f'xiaorui:{owner_key}:{session.conversation_id}:e{session.forget_epoch}'
-        bot = build_runtime(self._config(), self.data_dir / 'runtime', dispatch, context)
+        settings = self._config()
+        if (contact_reply_mode.get() == 'text' and not contact_media.get()
+                and not session.services and not self.actions.pending(owner)
+                and lightweight_chat(text)):
+            settings = {**settings, 'lightweight_chat': True}
+            trace.append({'type': 'host.lightweight_chat'})
+        bot = build_runtime(settings, self.data_dir / 'runtime', dispatch, context)
         result = None
         started = time.monotonic()
         first_text = True
@@ -366,8 +381,12 @@ class AgentService:
             raise AgentError('小瑞暂时没有生成回复，请重试。')
         notify({'type': 'progress', 'stage': 'narration', 'text': '回复已生成，正在整理成简短的话'})
         started = time.monotonic()
-        session.speech_turn = await self.speech.compose(
-            self._config(), text, result.content.strip(), events, session.display, profile=self.store.model_profile())
+        if contact_reply_mode.get()=='text':
+            session.speech_turn = speech_fallback(speech_context(text,result.content.strip(),events,session.display,self.store.model_profile()))
+            session.defer_speech = session.speech_turn['source'] not in {'grounded','brief'}
+        else:
+            session.speech_turn = await self.speech.compose(
+                self._config(), text, result.content.strip(), events, session.display, profile=self.store.model_profile())
         trace.append({'type': 'timing', 'stage': 'speech_composition',
                       'elapsed_ms': round((time.monotonic() - started) * 1000)})
         answer=result.content.strip()
@@ -383,11 +402,46 @@ class AgentService:
                     'speech_stage': spoken['stage'], 'events': events,
                     'runtime': 'nanobot', 'task_id': task_id, 'trace': trace,
                     'conversation_reset': conversation_reset}
+        if session.defer_speech:
+            profile=self.store.model_profile()
+            self._speech_jobs[task_id]={'owner':owner,'conversation_id':session.conversation_id,
+                'version':profile['version'],'profile':profile,'user':text,'answer':answer,
+                'events':copy.deepcopy(events),'history':copy.deepcopy(session.display)}
+            response['speech_deferred']=True
         session.display.extend([{'role': 'user', 'text': text.strip()},
                                 {'role': 'assistant', **copy.deepcopy(response)}])
         session.display = session.display[-48:]
         self.store.save_session(owner, session.snapshot())
         return response
+
+    def discard_speech(self, task_id):
+        self._speech_jobs.pop(task_id,None)
+
+    async def complete_speech(self, owner, task_id):
+        job=self._speech_jobs.pop(task_id,None)
+        if not job or job['owner']!=owner:
+            return None
+        async with self._speech_slots:
+            spoken=await self.speech.compose(self._config(),job['user'],job['answer'],job['events'],job['history'],profile=job['profile'])
+        if self.store.profile()['version']!=job['version']:
+            return None
+        state=self.store.session(owner)
+        if state['conversation_id']!=job['conversation_id']:
+            return None
+        patch={'speech_text':spoken['text'],'speech_source':spoken['source'],'speech_deferred':False}
+        found=False
+        for message in state['display']:
+            if message.get('task_id')==task_id:
+                message.update(patch);found=True
+        if not found:
+            return None
+        self.store.save_session(owner,state)
+        cached=self.sessions.get(owner)
+        if cached and cached.conversation_id==job['conversation_id']:
+            for message in cached.display:
+                if message.get('task_id')==task_id:
+                    message.update(patch)
+        return {'type':'speech_ready','task_id':task_id,**patch}
 
     async def chat(self, owner, text, *, expected_confirmation=None):
         if not isinstance(text, str) or not text.strip() or len(text) > 2000:
@@ -400,6 +454,7 @@ class AgentService:
         async with session.lock:
             events, trace = [], []
             session.speech_turn = None
+            session.defer_speech = False
             initial_conversation = session.conversation_id
             task_id = self.store.start_task(owner, session.conversation_id, text)
             try:

@@ -99,11 +99,14 @@ def build_runtime(settings, directory: Path, dispatch, context_provider):
     cfg.bind_source_path(directory / 'config.json')
     registry = HostedRegistry()
     for tool in build_tools(dispatch):
-        registry.register(tool)
+        if not settings.get('lightweight_chat'):
+            registry.register(tool)
     loop = AgentLoop.from_config(cfg, tool_registry=registry)
     # Slash-command handlers are an execution path independent of the tool table.
     loop.commands = CommandRouter()
     expected = set(SCHEMAS) & read_only.QUERY_TOOLS if read_only.READ_ONLY else set(SCHEMAS)
+    if settings.get('lightweight_chat'):
+        expected = set()
     if set(registry.tool_names) != expected:
         raise RuntimeError('Unexpected runtime capability surface')
     bot = Nanobot(loop, config=cfg)

@@ -41,6 +41,21 @@ test('nonvisual query receipts do not make empty bubbles and reply text appears 
  h.emit(reply('c','',[receipt]));tree=h.render();assert.equal(messages().length,2);
 });
 
+test('HTTP receipt and SSE replay show one quick answer and cannot resurrect a completed placeholder',async()=>{
+ const h=harness();h.render();await h.flush();h.render();
+ const accepted={type:'accepted',message_id:'receipt-1',client_id:'receipt-client',text:'帮我看看天气',ack_text:'好，我帮您看看。'};
+ h.emit(accepted);h.emit(accepted);let tree=h.render();
+ assert.equal(all(tree,n=>n.type==='p'&&n.props.children==='好，我帮您看看。').length,1);
+ h.emit({...reply('receipt-1','真实查询结果'),response:{text:'真实查询结果',speech_text:'暂用安全播报',events:[],task_id:'task-1'}});h.emit(accepted);tree=h.render();
+ assert.equal(all(tree,n=>n.type==='p'&&n.props.children==='真实查询结果').length,1);
+ assert.equal(all(tree,n=>n.type?.name==='MessageProgress').length,0);
+ const texts=all(tree,n=>n.type==='p').map(n=>n.props.children);
+ assert.ok(texts.indexOf('好，我帮您看看。')<texts.indexOf('真实查询结果'));
+ const count=all(tree,n=>n.type==='article').length;
+ h.emit({type:'speech_ready',task_id:'task-1',speech_text:'后补的自然播报'});tree=h.render();
+ assert.equal(all(tree,n=>n.type==='article').length,count);
+});
+
 const buttonByLabel=(tree,label)=>all(tree,node=>node.type==='button'&&node.props['aria-label']===label)[0];
 test('switch input or open more functions cancels pending single-message recognition after mic release',async()=>{
  for(const label of ['切换到文字输入','更多功能']){

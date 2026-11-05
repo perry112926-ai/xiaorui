@@ -148,6 +148,7 @@ class ContactMessage(ChatRequest):
     client_id: str = Field(min_length=8, max_length=80, pattern=r'^[a-zA-Z0-9_-]+$')
     image_ids: list[str] = Field(default_factory=list,max_length=4)
     call_id: str | None = Field(default=None, max_length=64, strict=True)
+    reply_mode: Literal['text','speech'] = 'text'
 
 
 class ImageUpload(Body):
@@ -167,7 +168,7 @@ async def read_image(image_id: str,request: Request):
 
 @app.post('/api/contact/messages', status_code=202)
 async def contact_message(body: ContactMessage, request: Request):
-    return contact.enqueue(request.state.owner, body.text, body.client_id, body.image_ids, body.call_id)
+    return contact.enqueue(request.state.owner, body.text, body.client_id, body.image_ids, body.call_id, body.reply_mode)
 
 
 @app.post('/api/contact/calls')

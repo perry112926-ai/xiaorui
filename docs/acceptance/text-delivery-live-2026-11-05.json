@@ -1,0 +1,77 @@
+{
+  "live_model": true,
+  "http_sse": true,
+  "isolated_profile": true,
+  "business_writes": false,
+  "observations": [
+    {
+      "input": "请列出6个轻松的周末活动，每项一句话。",
+      "receipt_ms": 5,
+      "immediate_ack": true,
+      "completed_ms": 7288,
+      "first_delta_ms": 6771,
+      "voice_deferred": true
+    },
+    {
+      "input": "再用一句话告诉我，想放松时先做哪一项就好。",
+      "receipt_ms": 4,
+      "immediate_ack": true,
+      "started_ms": 246,
+      "completed_ms": 7065
+    },
+    {
+      "input": "在吗？",
+      "receipt_ms": 10,
+      "immediate_ack": false,
+      "completed_ms": 249,
+      "host_reply": true
+    }
+  ],
+  "text_before_narration": true,
+  "next_turn_started_before_narration_finished": true,
+  "elapsed_seconds": 14.67,
+  "passed": true,
+  "date": "2026-11-05",
+  "baseline": {
+    "first_delta_ms": 9785,
+    "completed_ms": 13665,
+    "note": "前一轮合成观测；请求文字略有不同，非严格同条件性能对照"
+  },
+  "limitations": [
+    "服务端HTTP回执耗时不等于浏览器可见或模型首字耗时",
+    "浏览器额外一轮模型请求失败；后续补充成功，稳定性仍需观测",
+    "无真实资料、业务下单或真人语音测试",
+    "模型服务间歇返回 ModelNotOpen；不能声称后续所有请求均稳定成功"
+  ],
+  "repeat_observations": [
+    {
+      "input": "请列出6个轻松的周末活动，每项一句话。",
+      "receipt_ms": 6,
+      "immediate_ack": true,
+      "completed_ms": 9344,
+      "first_delta_ms": 8065,
+      "voice_deferred": true
+    },
+    {
+      "input": "再用一句话告诉我，想放松时先做哪一项就好。",
+      "receipt_ms": 12,
+      "immediate_ack": true,
+      "started_ms": 237,
+      "completed_ms": 5562
+    },
+    {
+      "input": "在吗？",
+      "receipt_ms": 6,
+      "immediate_ack": false,
+      "completed_ms": 249,
+      "host_reply": true
+    }
+  ],
+  "verification": {
+    "isolated_commit_python_tests": 268,
+    "isolated_commit_frontend_tests": 71,
+    "frontend_build": true,
+    "shared_working_tree_python_tests": 272,
+    "shared_working_tree_frontend_tests": 74
+  }
+}

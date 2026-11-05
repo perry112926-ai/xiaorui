@@ -11,7 +11,8 @@ from pathlib import Path
 from uuid import uuid4
 
 from app.agent import AgentError
-from app.contact_events import contact_observer, contact_media, contact_call
+from app.contact_events import contact_observer, contact_media, contact_call, contact_reply_mode
+from app.text_delivery import acknowledgement
 
 CONFIRMATIONS = {'确认叫车', '确认下单', '确认取消', '确认新增地址'}
 
@@ -23,6 +24,7 @@ class ContactService:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.workers = {}
+        self.narrations = set()
         self.stopping = False
         with self.db() as db:
             db.execute('CREATE TABLE IF NOT EXISTS inbox (id TEXT PRIMARY KEY, owner TEXT NOT NULL, client_id TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL, confirmation TEXT, created REAL, UNIQUE(owner, client_id))')
@@ -32,6 +34,8 @@ class ContactService:
                 db.execute("ALTER TABLE inbox ADD COLUMN images TEXT NOT NULL DEFAULT '[]'")
             if 'call_id' not in {r[1] for r in db.execute('PRAGMA table_info(inbox)')}:
                 db.execute('ALTER TABLE inbox ADD COLUMN call_id TEXT')
+            if 'reply_mode' not in {r[1] for r in db.execute('PRAGMA table_info(inbox)')}:
+                db.execute("ALTER TABLE inbox ADD COLUMN reply_mode TEXT NOT NULL DEFAULT 'speech'")
             db.execute('CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY, owner TEXT NOT NULL, started REAL NOT NULL, ended REAL, duration INTEGER)')
         self.path.chmod(0o600)
 
@@ -95,7 +99,9 @@ class ContactService:
                 'cursor': cursor, 'pending': pending,
                 'active_call': {'id':active[0], 'started_at':active[1]} if active else None}
 
-    def enqueue(self, owner, text, client_id, image_ids=None, call_id=None):
+    def enqueue(self, owner, text, client_id, image_ids=None, call_id=None, reply_mode='text'):
+        if reply_mode not in {'text','speech'}:
+            raise AgentError('回复方式无效。',400)
         image_ids=image_ids or []
         if len(image_ids)>4:
             raise AgentError('每条消息最多发送四张图片。',400)
@@ -111,7 +117,7 @@ class ContactService:
         with self.db() as db:
             old = db.execute('SELECT id FROM inbox WHERE owner=? AND client_id=?', (owner, client_id)).fetchone()
             if old:
-                return {'message_id': old[0], 'accepted': True}
+                return self.receipt(db,owner,old[0])
             if call_id and not db.execute('SELECT 1 FROM calls WHERE id=? AND owner=? AND ended IS NULL', (call_id, owner)).fetchone():
                 raise AgentError('这次通话已经结束，请重新拨打或发送文字消息。', 409)
             if db.execute("SELECT count(*) FROM inbox WHERE owner=? AND status IN ('queued','running')", (owner,)).fetchone()[0] >= 20:
@@ -122,11 +128,13 @@ class ContactService:
             plan = self.agent.actions.pending(owner) if phrase in CONFIRMATIONS and not image_ids else None
             confirmation = json.dumps([plan['id'], plan['version']]) if plan else '[]'
             mid = str(uuid4())
-            db.execute('INSERT INTO inbox (id,owner,client_id,text,status,confirmation,created,images,call_id) VALUES (?,?,?,?,?,?,?,?,?)',
-                       (mid, owner, client_id, text.strip(), 'queued', confirmation, time.time(),json.dumps(image_ids),call_id))
-            db.execute('INSERT INTO events(owner,payload) VALUES (?,?)', (owner, json.dumps(
-                {'type': 'accepted', 'message_id': mid, 'client_id': client_id, 'text': text.strip(), **({'call_id':call_id} if call_id else {}),
-                 'images':[{'id':i,'url':f'/api/contact/images/{i}'} for i in image_ids]}, ensure_ascii=False)))
+            db.execute('INSERT INTO inbox (id,owner,client_id,text,status,confirmation,created,images,call_id,reply_mode) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                       (mid, owner, client_id, text.strip(), 'queued', confirmation, time.time(),json.dumps(image_ids),call_id,'speech' if call_id else reply_mode))
+            event={'type': 'accepted', 'message_id': mid, 'client_id': client_id, 'text': text.strip(), **({'call_id':call_id} if call_id else {}),
+                 'images':[{'id':i,'url':f'/api/contact/images/{i}'} for i in image_ids]}
+            if not call_id:
+                event['ack_text']=acknowledgement(text)
+            db.execute('INSERT INTO events(owner,payload) VALUES (?,?)', (owner,json.dumps(event,ensure_ascii=False)))
         # A correction invalidates an old approval immediately, before its turn.
         if phrase not in CONFIRMATIONS or image_ids:
             self.invalidate_previous(owner)
@@ -134,7 +142,25 @@ class ContactService:
         if task is None or task.done():
             self.workers = {k:v for k,v in self.workers.items() if not v.done()}
             self.workers[owner] = asyncio.create_task(self.pump(owner))
-        return {'message_id': mid, 'accepted': True}
+        return {'message_id': mid, 'accepted': True,'event':event}
+
+    @staticmethod
+    def receipt(db, owner, message_id):
+        row=db.execute("SELECT payload FROM events WHERE owner=? AND json_extract(payload,'$.type')='accepted' AND json_extract(payload,'$.message_id')=? ORDER BY id LIMIT 1",(owner,message_id)).fetchone()
+        result={'message_id':message_id,'accepted':True}
+        if row:
+            result['event']=json.loads(row[0])
+        return result
+
+    async def narrate(self, owner, task_id):
+        try:
+            event=await self.agent.complete_speech(owner,task_id)
+            if event:
+                self.emit(owner,event)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass  # The text reply and grounded fallback remain usable.
 
     def has_pending(self, owner, call_id='__any__'):
         with self.db() as db:
@@ -152,9 +178,9 @@ class ContactService:
     async def pump(self, owner):
         while not self.stopping:
             # Briefly collect consecutive fragments, keeping confirmations separate.
-            await asyncio.sleep(.35)
+            await asyncio.sleep(.12)
             with self.db() as db:
-                rows = db.execute("SELECT id,text,confirmation,images,call_id FROM inbox WHERE owner=? AND status='queued' ORDER BY created,rowid", (owner,)).fetchall()
+                rows = db.execute("SELECT id,text,confirmation,images,call_id,reply_mode FROM inbox WHERE owner=? AND status='queued' ORDER BY created,rowid", (owner,)).fetchall()
                 if not rows:
                     return
                 batch = []
@@ -175,6 +201,7 @@ class ContactService:
                                          if not self.has_pending(owner, batch[0][4]) else None)
             media_token=contact_media.set(None)
             call_token=contact_call.set(batch[0][4])
+            reply_token=contact_reply_mode.set('speech' if batch[0][4] or any(r[5]=='speech' for r in batch) else 'text')
             try:
                 if self.images:
                     contact_media.set([self.images.resolve(owner,mid) for r in batch for mid in json.loads(r[3])])
@@ -196,6 +223,12 @@ class ContactService:
                     self.invalidate_previous(owner)
                 self.emit(owner, {'type': 'completed', 'message_id': run, 'message_ids': ids,
                                   'response': response, 'superseded': stale, **channel})
+                if response.get('speech_deferred'):
+                    if not stale and len(self.narrations)<8:
+                        job=asyncio.create_task(self.narrate(owner,response['task_id']))
+                        self.narrations.add(job);job.add_done_callback(self.narrations.discard)
+                    else:
+                        self.agent.discard_speech(response['task_id'])
                 status = 'completed'
             except asyncio.CancelledError:
                 self.emit(owner, {'type': 'failed', 'message_id': run, 'message_ids': ids,
@@ -210,6 +243,7 @@ class ContactService:
                 contact_observer.reset(token)
                 contact_media.reset(media_token)
                 contact_call.reset(call_token)
+                contact_reply_mode.reset(reply_token)
                 with self.db() as db:
                     for mid in ids:
                         db.execute('UPDATE inbox SET status=? WHERE id=?', (status, mid))
@@ -217,6 +251,7 @@ class ContactService:
     async def close(self):
         self.stopping = True
         tasks = [t for t in self.workers.values() if not t.done()]
+        tasks += list(self.narrations)
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
