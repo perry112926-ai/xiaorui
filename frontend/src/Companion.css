@@ -1,0 +1,39 @@
+/* Distinct quiet poses, driven by real activity rather than an idle slideshow. */
+.companion-expressive{--companion-accent:#52735e;--companion-tint:#e5eee6;position:relative}
+.companion-expressive .companion-halo{transition:background .25s ease; background:var(--companion-tint)}
+.companion-expressive .mascot-image{animation:companion-image-arrive .22s ease-out}
+.companion-expressive .companion-figure{will-change:transform}
+.companion-expressive.scene-idle .companion-figure{animation:companion-rest 5.5s ease-in-out infinite}
+.companion-expressive.scene-listening{--companion-accent:#38795d;--companion-tint:#dfefe5}
+.companion-expressive.scene-listening .companion-figure{animation:companion-attend 3s ease-in-out infinite}
+.companion-expressive.scene-working{--companion-accent:#8d7048;--companion-tint:#f0e8d9}
+.companion-expressive.scene-working .companion-figure{animation:companion-consider 2.6s ease-in-out infinite}
+.companion-expressive.scene-speaking{--companion-accent:#477592;--companion-tint:#e2edf3}
+.companion-expressive.scene-speaking .companion-figure{animation:companion-tell 1.4s ease-in-out infinite}
+.companion-expressive.scene-taxi{--companion-accent:#967324;--companion-tint:#f2ebd6}
+.companion-expressive.scene-dining{--companion-accent:#a86c4b;--companion-tint:#f2e5dc}
+.companion-expressive.scene-taxi .companion-figure,.companion-expressive.scene-dining .companion-figure{animation:companion-help 3s ease-in-out infinite}
+.companion-state-decoration{position:absolute;inset:0;pointer-events:none}
+.companion-state-mark{position:absolute;top:13%;right:3%;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;gap:4px;background:#fffdf8;color:var(--companion-accent);border:2px solid var(--companion-tint);box-shadow:0 4px 12px #283e3414}
+.companion-state-mark svg{width:32px;height:32px}
+.mark-thinking i{width:6px;height:6px;border-radius:50%;background:currentColor;animation:companion-thought 1.8s ease-in-out infinite}
+.mark-thinking i:nth-child(2){animation-delay:.2s}.mark-thinking i:nth-child(3){animation-delay:.4s}
+.mark-speaking{gap:3px}.mark-speaking i{width:3px;height:12px;border-radius:3px;background:currentColor;animation:companion-voice .9s ease-in-out infinite alternate}.mark-speaking i:nth-child(2),.mark-speaking i:nth-child(4){height:20px;animation-delay:.2s}.mark-speaking i:nth-child(3){height:28px;animation-delay:.4s}
+.mark-listening{animation:companion-listen-ring 3s ease-in-out infinite}
+.companion-inline{width:128px;height:160px;right:20px;bottom:100%}
+.companion-inline .companion-expressive .companion-figure{width:112px;height:146px;margin:auto}
+.companion-inline .companion-state-mark{top:6%;right:0;width:34px;height:34px;gap:3px}
+.companion-inline .companion-state-mark svg{width:25px;height:25px}
+.companion-inline .mark-thinking i{width:4px;height:4px}.companion-inline .mark-speaking{gap:2px}.companion-inline .mark-speaking i{width:2px;max-height:21px}
+@media(min-width:761px){.phone-active .companion-inline{display:block}}
+@media(max-width:760px){.companion-inline{display:none}.greeting .companion-state-mark{top:7%;right:3%;width:40px;height:40px}}
+@keyframes companion-rest{50%{transform:translateY(-2px)}}
+@keyframes companion-attend{0%,100%{transform:rotate(-5deg) translateX(-3px)}50%{transform:rotate(-8deg) translateX(-5px) translateY(-2px)}}
+@keyframes companion-consider{0%,100%{transform:rotate(3deg)}50%{transform:rotate(5deg) translateY(-3px)}}
+@keyframes companion-tell{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-4px) scale(1.025)}}
+@keyframes companion-help{50%{transform:translateY(-3px) rotate(-2deg)}}
+@keyframes companion-thought{0%,70%,100%{opacity:.35;transform:translateY(0)}35%{opacity:1;transform:translateY(-4px)}}
+@keyframes companion-voice{to{transform:scaleY(.4)}}
+@keyframes companion-listen-ring{50%{box-shadow:0 0 0 5px #38795d0d}}
+@keyframes companion-image-arrive{from{opacity:.3}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.companion-expressive .companion-figure,.companion-expressive .mascot-image,.companion-expressive .companion-state-mark,.companion-expressive .companion-state-mark i{animation:none!important;transition:none!important;transform:none!important;will-change:auto}}
