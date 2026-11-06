@@ -30,6 +30,7 @@ class ActionManager:
     PROVIDERS = {'luckin', 'mcd', 'didi'}
     REVIEW = {'awaiting_confirmation', 'needs_review'}
     BUSY = {'rechecking', 'submitting', 'unknown'}
+    LUCKIN_DUPLICATE_WINDOW_SECONDS = 15 * 60
 
     def __init__(self, path, *, enabled=None, external_blocks=None):
         self.path = Path(path)
@@ -144,7 +145,17 @@ class ActionManager:
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             previous = [json.loads(r['body']) for r in db.execute('SELECT body FROM actions WHERE owner=?', (owner,))]
-            if any(p['provider'] == provider and p['status'] in self.BUSY for p in previous):
+            for prior in previous:
+                if prior['provider'] != provider or prior['status'] not in self.BUSY:
+                    continue
+                if provider == 'luckin' and prior['status'] == 'unknown' and prior['action'] == action == 'create':
+                    submitted_at = prior.get('submitted_at', prior['created_at'])
+                    previous_request = prior['request']
+                    same_items = all(previous_request.get(field) == request.get(field)
+                                     for field in ('deptId', 'productList'))
+                    if not same_items or now - submitted_at >= self.LUCKIN_DUPLICATE_WINDOW_SECONDS:
+                        continue
+                    raise ActionError('同一家瑞幸门店的相同餐品刚提交过，结果待核查。请先查看官方订单，避免重复下单。')
                 raise ActionError('上一笔操作结果待核查或正在执行，不能重复提交。')
             for p in previous:
                 if p['status'] in self.REVIEW or (p['status']=='expired' and p['provider']=='mcd' and p['action']=='create'):
@@ -246,7 +257,7 @@ class ActionManager:
                 error='报价已重新核对，请确认当前内容和总额。' if expired_quote else '费用、规格或接送点有变化，请核对后再次确认。'))
         # Invalidating the token and persisting before the first remote write is
         # essential: timeout/crash cannot turn a later confirmation into a retry.
-        self._update(owner,id,status='submitting',request=quote['request'],request_hash=self.request_hash(quote['request']),confirmation_token=secrets.token_urlsafe(32))
+        self._update(owner,id,status='submitting',submitted_at=time.time(),request=quote['request'],request_hash=self.request_hash(quote['request']),confirmation_token=secrets.token_urlsafe(32))
         try:
             result = await adapter.execute(p['action'], copy.deepcopy(quote['request']))
             if not isinstance(result, dict) or not result.get('address_id' if p['action']=='create_address' else 'order_id'):

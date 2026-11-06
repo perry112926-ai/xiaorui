@@ -98,7 +98,13 @@ ROOT = Path(__file__).resolve().parents[1]
 def external_request_block(provider):
     path=ROOT/'.local-data/payment-probe'/(provider+'.json')
     if not path.exists():return False
-    try:return json.loads(path.read_text()).get('status') in {'unknown','submitting'}
+    try:
+        record = json.loads(path.read_text())
+        status = record.get('status')
+        if provider == 'luckin' and status == 'unknown':
+            submitted_at = record.get('submitted_at')
+            return type(submitted_at) not in {int, float} or time.time() - submitted_at < ActionManager.LUCKIN_DUPLICATE_WINDOW_SECONDS
+        return status in {'unknown', 'submitting'}
     except (ValueError,OSError):return True
 
 

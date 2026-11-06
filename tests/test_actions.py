@@ -131,3 +131,22 @@ class ActionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['status'],'superseded')
         self.adapter.quote.assert_not_awaited()
         self.adapter.execute.assert_not_awaited()
+
+    async def test_luckin_unknown_blocks_recent_duplicate_but_allows_new_orders(self):
+        self.manager.register('luckin', self.adapter)
+        request = {'deptId': 'store', 'productList': [{'sku': 'latte'}]}
+        quoted = {**quote(), 'request': request}
+        self.adapter.quote.return_value = quoted
+        self.adapter.execute.side_effect = TimeoutError()
+        plan = self.manager.prepare('owner', 'luckin', 'create', request, quoted)
+        confirm = lambda: self.manager.confirm('owner', plan['id'], plan['version'],
+                                              plan['confirmation_token'], '确认下单')
+        self.assertEqual((await confirm())['status'], 'unknown')
+        with self.assertRaisesRegex(ActionError, '相同餐品'):
+            self.manager.prepare('owner', 'luckin', 'create', {**request, 'couponCodeList': ['new']}, quoted)
+        self.manager.prepare('owner', 'luckin', 'create', {**request, 'productList': [{'sku': 'tea'}]}, quoted)
+        self.manager._update('owner', plan['id'], submitted_at=0)
+        fresh = self.manager.prepare('owner', 'luckin', 'create', request, quoted)
+        self.assertEqual(fresh['status'], 'awaiting_confirmation')
+        self.assertEqual((await confirm())['status'], 'unknown')
+        self.adapter.execute.assert_awaited_once()
