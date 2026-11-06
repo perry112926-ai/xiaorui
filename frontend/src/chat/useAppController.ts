@@ -42,6 +42,7 @@ export function useAppController(){
    case 'call_ended':showCall(e.call);return;
    case 'accepted':
     if(!chat.accept(e))return;
+    setActiveChoices(undefined);
     if(e.call_id&&e.call_id===activePhone.current?.id)phonePendingIds.current.add(e.message_id);
     break;
    case 'started':

@@ -11,8 +11,9 @@ class Args(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
 
 class Stores(Args):
-    longitude: float = Field(ge=115.4, le=117.6, allow_inf_nan=False)
-    latitude: float = Field(ge=39.4, le=41.1, allow_inf_nan=False)
+    longitude: float | None = Field(default=None, ge=115.4, le=117.6, allow_inf_nan=False)
+    latitude: float | None = Field(default=None, ge=39.4, le=41.1, allow_inf_nan=False)
+    origin_index: int | None = Field(default=None, ge=1, le=5, strict=True)
     keyword: str = Field(default='', max_length=80)
 
 class Products(Args):
@@ -35,7 +36,7 @@ class Order(Args):
 
 
 SCHEMAS = {
-    'luckin_search_stores':(Stores,'按本轮真实定位或地点搜索坐标查询北京瑞幸门店，禁止猜测当前位置。open为null或标签为空时营业状态未知，不得依据营业时间推断打烊或营业。'),
+    'luckin_search_stores':(Stores,'查北京瑞幸自取门店。先用高德查用户指定地标或读取授权定位作为起点，再传已核对的 origin_index。禁止猜坐标。open为null时营业状态未知。'),
     'luckin_search_products':(Products,'用户选择门店后，按用户原话查饮品候选；使用当前门店序号。'),
     'luckin_product_detail':(Product,'查看当前饮品真实规格；不修改或下单。'),
     'luckin_switch_product':(Switch,'按用户指定的温度、糖度、杯型等切换真实可用规格，找不到选项时不能假装修改。'),
@@ -114,6 +115,8 @@ class LuckinScenario:
                 self.transactions.invalidate_pending(owner)
             state=session.services.setdefault('luckin',{})
             if name=='luckin_search_stores':
+                if arg.longitude is None or arg.latitude is None:
+                    raise ServiceUnavailable('请先核对北京附近地标，再查瑞幸门店。')
                 session.services['luckin']={}
                 stores=candidates(await self.provider.call('queryShopList',{
                     'longitude':arg.longitude,'latitude':arg.latitude,'deptName':arg.keyword}))

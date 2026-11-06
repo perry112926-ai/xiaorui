@@ -89,3 +89,52 @@ class TaskSwitchingTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(luckin_delivery_boundary('麦当劳可以外卖吗',history))
         self.assertIsNone(luckin_delivery_boundary('那我自己到店自取',history))
         self.assertIsNone(luckin_delivery_boundary('外卖可以吗',history+[{'role':'user','text':'今天北京天气'}]))
+
+    def test_short_lookup_stays_with_latest_explicit_task(self):
+        from app.task_switching import turn_domain
+        history = [
+            {'role':'user','text':'查询麦当劳订单'},
+            {'role':'user','text':'最近的公共厕所在哪里'},
+            {'role':'assistant','text':'要查步行路线吗？'},
+        ]
+        self.assertEqual(turn_domain('查一下',history),'amap')
+        self.assertEqual(turn_domain('瑞幸：选择第1个门店',history),'luckin')
+        self.assertEqual(turn_domain('我是要瑞幸，不是要麦当劳',history),'luckin')
+        self.assertEqual(turn_domain('e世界',[{'role':'assistant','text':'这次想在哪家瑞幸取餐，或附近是什么地标？'}]),'luckin')
+        self.assertIsNone(turn_domain('1',history+[{'role':'user','text':'你好'}]))
+
+    async def test_luckin_delivery_landmark_does_not_select_pickup(self):
+        self.agent._run=AsyncMock(side_effect=AssertionError('pickup was not accepted'))
+        await self.agent.chat('owner','瑞幸能外卖吗')
+        result=await self.agent.chat('owner','e世界')
+        self.assertIn('愿意改成自取',result['text'])
+        self.agent._run.assert_not_awaited()
+
+    def test_old_meal_card_cannot_capture_number_after_new_reply(self):
+        from app.mcd_recommendations import resolve_selection
+        self.session.display = [
+            {'role':'assistant','events':[{'type':'service_choices','choices':[
+                {'recommendation_id':'old-meal','label':'旧套餐'}]}]},
+            {'role':'user','text':'帮我打车去知春路'},
+            {'role':'assistant','text':'请选目的地，1是地铁站。','events':[]},
+        ]
+        self.assertIsNone(resolve_selection(self.session,'1'))
+
+    async def test_map_continuation_exposes_no_order_tools(self):
+        self.session.display = [
+            {'role':'user','text':'最近的公共厕所在哪里'},
+            {'role':'assistant','text':'要查步行路线吗？'},
+        ]
+        class Bot:
+            async def __aenter__(self): return self
+            async def __aexit__(self,*args): pass
+            async def stream(self,*args,**kwargs):
+                yield SimpleNamespace(type='run.completed',name=None,result=SimpleNamespace(
+                    error=None,stop_reason='completed',content='请核对起点。'))
+        self.agent.speech.compose=AsyncMock(return_value={'text':'请核对起点。'})
+        with patch('app.agent.build_runtime',return_value=Bot()) as runtime:
+            result=await self.agent._run('owner',self.session,'查一下',[],[])
+        settings=runtime.call_args.args[0]
+        self.assertIn('amap_route',settings['tool_names'])
+        self.assertTrue(all(name.startswith('amap_') for name in settings['tool_names']))
+        self.assertEqual(result,'请核对起点。')

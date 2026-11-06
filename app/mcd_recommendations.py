@@ -233,9 +233,11 @@ def resolve_selection(session,text):
     # Only the most recent visible choice group can authorize a selection.
     cards=None
     for message in reversed(session.display):
+        if message.get('role') != 'assistant':
+            continue
         for event in reversed(message.get('events',[])):
             if event.get('type')=='service_choices':cards=event.get('choices',[]);break
-        if cards is not None:break
+        break
     if not cards or not all(c.get('recommendation_id') for c in cards) or number>len(cards):return None
     if cheapest:
         priced=[(Decimal(c['price_yuan']),i) for i,c in enumerate(cards) if c.get('price_yuan')]

@@ -55,23 +55,68 @@ _FULFILLMENT_FOLLOWUP = re.compile(
     r'(?:可以吗|行吗|可以么|行不行|吗|呢|可以不|能不能|可不可以)?[。！？!?\s]*'
 )
 _MERCHANT = re.compile(r'瑞幸|麦当劳|肯德基|星巴克|美团|饿了么')
+_NEGATED_MERCHANT = re.compile(r'(?:不是(?:要|想要)?|不要|别点|不点)\s*(?:瑞幸|麦当劳|肯德基|星巴克|美团|饿了么)')
 _DELIVERY = re.compile(r'外卖|外送|配送|送到|送来|送过来|送上门|送我|到[^，。！？!?]{1,60}(?:楼下|门口|家里|前台)')
+
+
+def turn_domain(text, history):
+    """Resolve a short reply against the latest user task, not saved carts."""
+    def explicit(value):
+        value = _NEGATED_MERCHANT.sub('', value)
+        matches = set()
+        for domain, pattern in (
+            ('luckin', '瑞幸'), ('mcd', '麦当劳|麦乐送|购物车'),
+            ('didi', '滴滴|打车|叫车'), ('amap', '路线|导航|怎么走|怎么去|天气|下雨|公厕|厕所|药店'),
+        ):
+            if re.search(pattern, value):
+                matches.add(domain)
+        return next(iter(matches)) if len(matches) == 1 else None
+
+    domain = explicit(text)
+    if domain:
+        return domain
+    last = history[-1] if history else {}
+    if (last.get('role')=='assistant'
+            and last.get('text','').endswith('您愿意改成自取吗？')
+            and re.fullmatch(r'(?:可以|好|对|行|愿意)[。！？!?\s]*',text.strip())):
+        return 'luckin'
+    followup = re.compile(r'(?:查一下|查查|继续(?:吧|呀)?|可以|对|好的?|就这个|就这份|第?[一二三四五12345](?:个|份)?|选[一二三四五12345]|不要冰的|热的|我已授权本次定位，请继续当前任务并核对实际地址；先不要提交交易)[。！？!?\s]*')
+    if not followup.fullmatch(text.strip()):
+        if (last.get('role')=='assistant'
+                and last.get('text','').startswith('这次想在哪家瑞幸取餐')
+                and re.fullmatch(r'[\w\s]{0,20}(?:楼下|门口|广场|中心|地铁站|世界)', text.strip())):
+            return 'luckin'
+        return None
+    for message in reversed(history):
+        if message.get('role') == 'user':
+            previous = message.get('text', '')
+            domain = explicit(previous)
+            if domain:
+                return domain
+            if not followup.fullmatch(previous.strip()):
+                break
+    return None
 
 
 def luckin_delivery_boundary(text, history):
     if re.search(r'不(?:要|用|想)?(?:外送|外卖|配送)|自取还是',text):
         return None
-    merchants=set(_MERCHANT.findall(text))
+    merchants=set(_MERCHANT.findall(_NEGATED_MERCHANT.sub('',text)))
     if merchants:
         matches=merchants=={'瑞幸'} and bool(_DELIVERY.search(text))
     else:
         matches=False
+        last_reply = next((m.get('text', '') for m in reversed(history) if m.get('role')=='assistant'), '')
+        if ('不能帮您点瑞幸外送' in last_reply
+                and re.fullmatch(r'[\w\s]{0,20}(?:楼下|门口|广场|中心|地铁站|世界)|可以|就那里', text.strip())
+                and not re.search(r'自取|到店|打车|路线|天气', text)):
+            return '瑞幸目前仅支持到店自取。您愿意改成自取吗？'
         if _FULFILLMENT_FOLLOWUP.fullmatch(text.strip()):
             for message in reversed(history):
                 if message.get('role')!='user':continue
                 previous=message.get('text','').strip()
                 if _FULFILLMENT_FOLLOWUP.fullmatch(previous):continue
-                matches=set(_MERCHANT.findall(previous))=={'瑞幸'}
+                matches=set(_MERCHANT.findall(_NEGATED_MERCHANT.sub('',previous)))=={'瑞幸'}
                 break
     if matches and _FULFILLMENT_FOLLOWUP.fullmatch(text.strip()):
         return '您问的是刚才那杯瑞幸。小瑞不能帮您点瑞幸外送，送到您说的位置能不能配送，要在瑞幸 App 或小程序里查。'

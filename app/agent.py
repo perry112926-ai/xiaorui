@@ -43,6 +43,7 @@ from app.speech import SpeechComposer, context as speech_context, fallback as sp
 from app.model_views import project_result, project_services, project_plans
 from app.factual_replies import business_turn, business_reply
 from app.task_switching import reminder_request, clear_drafts, cancel_mcd_order, release_completed_drafts, luckin_delivery_boundary
+from app.task_switching import turn_domain
 
 # Compatibility name for callers that previously used the blacklist sanitizer.
 model_safe = project_result
@@ -269,12 +270,25 @@ class AgentService:
             if result.get('needs_location'):events.append({'type':'location_request'})
             return result
         if name in self.scenario_tools:
+            if name=='luckin_search_stores' and 'origin_index' in arguments:
+                origins=session.services.get('amap',{}).get('origin',[])
+                index=arguments['origin_index']
+                if type(index) is not int or not 1<=index<=len(origins):
+                    return {'error':'请先查询并核对本轮北京地标。'}
+                origin=origins[index-1]
+                if origin.get('expires_at',float('inf'))<time.time():
+                    return {'error':'定位已过期，请重新定位或说出附近地标。'}
+                longitude,latitude=map(float,origin['location'].split(','))
+                arguments={**arguments,'longitude':longitude,'latitude':latitude}
             result = await self.scenario_tools[name].dispatch(session,owner,name,arguments,events)
             if name.startswith('mcd_') and name in read_only.QUERY_TOOLS:
                 events.append({'type': 'query_result', 'provider': 'mcd', 'tool': name,
                                'success': isinstance(result, dict) and 'error' not in result,
                                'source': 'https://open.mcd.cn/mcp', 'data': project_result(result,name)})
             cards=choice_cards(result)
+            if name.startswith(('luckin_','didi_')):
+                for card in cards:
+                    card['prompt']=('瑞幸' if name.startswith('luckin_') else '滴滴')+'：'+card['prompt']
             if cards or result.get('preflighted'):
                 events.append({'type':'service_choices','choices':cards})
             return project_result(result,name)
@@ -348,7 +362,9 @@ class AgentService:
         if boundary:
             trace.append({'type':'host.amap_capability_boundary'})
             return boundary
-        grounded_business = business_turn(text, session.services)
+        domain = turn_domain(text, session.display)
+        focused_services = {key:value for key,value in session.services.items() if not domain or key == domain}
+        grounded_business = domain != 'amap' and business_turn(text, focused_services)
         weather_reports=[]
         terminal_replies=[]
         flight_results=[]
@@ -364,7 +380,8 @@ class AgentService:
             terminal_replies.append(terminal_reply(name, result, text))
             if name == 'fliggy_search_flights':
                 flight_results.append(result)
-            if name.startswith(('mcd_','didi_','luckin_')):
+            if name.startswith(('mcd_','didi_','luckin_')) or (
+                    domain == 'luckin' and name in {'amap_search_places','amap_current_location'}):
                 session.tool_facts.append((name, result))
             self.store.save_session(owner, session.snapshot())
             if isinstance(result, dict) and 'error' in result:
@@ -391,6 +408,8 @@ class AgentService:
             return [data_context('conversation_channel', {'mode':'phone' if contact_call.get() else 'chat',
                     'guidance':'正在实时电话通话。像真人打电话一样简短承接用户的话，默认一两句短口语。缺资料时只问当前最必要的一项，不先罗列后续还要提供的多项资料。对方说没听清、不会操作或让你一句一句说时，减少信息量，一步一步引导，不声称已经调整硬件音量或语速。主动问一个推进当前事情所必需的问题，不重复已知条件。需要选择时发真实卡片，并说我给您发了卡片，选好告诉我。不要假设用户正在看屏幕；可语音解释选项。通话不改变真实交易确认规则。' if contact_call.get() else '普通消息聊天。自然承接上下文，必要时主动问一个问题，不机械追加问句。'}),
                     data_context('capabilities', {'tools':sorted(settings['tool_names']),
+                        'current_task_domain':domain,
+                        'task_guidance':'只处理本轮用户的需求及紧接着的澄清。历史订单和其他任务只能在用户明确要求时提及或继续。短回复承接最近的相关问题。当前查询要使用本轮工具，不能引用旧查询冒充新结果。',
                         'read_only':read_only.READ_ONLY,'execution_enabled':{p:self.actions.enabled(p) and not read_only.READ_ONLY for p in ('mcd','didi','luckin')},
                         'dining_provider':'mcd','payment_tool':False,'scheduled_notifications':False}),
                     data_context('capability_policy', {'read_only': read_only.READ_ONLY, 'message': read_only.MESSAGE if read_only.READ_ONLY else '依实际工具能力执行'}),
@@ -402,8 +421,10 @@ class AgentService:
                     ]),
                     data_context('canonical_profile', self.store.model_profile()),
                     data_context('companion_memory', self.memory.recall(owner, session.forget_epoch, text)),
-                    data_context('service_candidates', project_services(candidate_context(session.services))),
-                    data_context('recent_actions', project_plans([self.actions.public(p) for p in self.actions.list(owner)[:8]])),
+                    data_context('service_candidates', project_services(candidate_context(
+                        {k:v for k,v in session.services.items() if not domain or k in {domain,'amap'}}))),
+                    data_context('recent_actions', project_plans([self.actions.public(p) for p in self.actions.list(owner)
+                        if not domain or p['provider']==domain][:8])),
                     data_context('current_candidates', {
                         'stores': list(session.stores.values()),
                         'meals': [{'index': i+1, 'name': m['name'], 'amount_cents': m['amount_cents']}
@@ -414,7 +435,11 @@ class AgentService:
         owner_key = hashlib.sha256(owner.encode()).hexdigest()[:32]
         key = f'xiaorui:{owner_key}:{session.conversation_id}:e{session.forget_epoch}'
         settings = {**self._config(), 'tool_names': tool_scope(text, session.services, SCHEMAS),
-                    'terminal_replies': lambda: terminal_replies, 'observe': trace.append}
+                    'terminal_replies': lambda: terminal_replies, 'observe': trace.append, 'task_domain':domain}
+        if domain:
+            settings['tool_names'] &= {name for name in SCHEMAS if name.startswith(domain+'_')
+                or (domain=='luckin' and name in {'amap_search_places','amap_current_location'})
+                or (domain in {'mcd','didi'} and name=='personal_profile')}
         if read_only.READ_ONLY:
             settings['tool_names'] &= read_only.QUERY_TOOLS
         if (not contact_media.get()
@@ -458,7 +483,7 @@ class AgentService:
         if not isinstance(result.content, str) or not result.content.strip():
             raise AgentError('小瑞暂时没有生成回复，请重试。')
         if grounded_business or session.tool_facts:
-            answer=business_reply(text, session.services, session.tool_facts, events, self.store.model_profile())
+            answer=business_reply(text, focused_services, session.tool_facts, events, self.store.model_profile(), domain=domain)
             session.speech_turn = {'text': answer, 'source': 'grounded', 'stage': 'business'}
             session.defer_speech = False
             if session.tool_facts:
@@ -491,8 +516,10 @@ class AgentService:
         ready=[e for e in events if e.get('type')=='service_choices' and any(c.get('recommendation_id') for c in e.get('choices',[]))]
         if ready:
             events=[e for e in events if e.get('type')!='service_choices' or e is ready[-1]]
+        domain = turn_domain(text, session.display)
+        focused_services = {key:value for key,value in session.services.items() if not domain or key == domain}
         if any(e.get('type') in {'plan','action_plan'} for e in events):
-            answer = business_reply(text, session.services, session.tool_facts, events, self.store.model_profile())
+            answer = business_reply(text, focused_services, session.tool_facts, events, self.store.model_profile(), domain=domain)
             session.speech_turn = {'text':answer,'source':'grounded','stage':'transaction' if any(e.get('type') in {'plan','action_plan'} for e in events) else 'business'}
             session.defer_speech = False
         spoken = session.speech_turn or speech_fallback(speech_context(text, answer, events, session.display, self.store.model_profile()))
@@ -612,7 +639,8 @@ class AgentService:
                         trace.append({'type':'host.reminder_boundary'})
                     elif phrase in {'取消订单','取消麦当劳订单','帮我取消订单','不想付钱了','不付了'} and not read_only.READ_ONLY and (answer:=await cancel_mcd_order(self,session,owner,events)) is not None:
                         trace.append({'type':'host.cancel_order_query'})
-                    elif not read_only.READ_ONLY and (recommendation_id:=resolve_selection(session,text)):
+                    elif (not read_only.READ_ONLY and turn_domain(text,session.display) in {None,'mcd'}
+                            and (recommendation_id:=resolve_selection(session,text))):
                         result=await self.scenarios['mcd'].dispatch(session,owner,'mcd_choose_recommendation',{'recommendation_id':recommendation_id},events)
                         if 'products' in result:events.append({'type':'service_choices','choices':choice_cards(result)})
                         answer=self.proposal_text(result['plan']) if result.get('plan') else result.get('error') or result.get('note','请重新查询套餐。')
