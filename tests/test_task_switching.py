@@ -71,3 +71,21 @@ class TaskSwitchingTests(unittest.IsolatedAsyncioTestCase):
         actions=SimpleNamespace(get=lambda owner,id:{'status':'created'})
         release_completed_drafts(SimpleNamespace(actions=actions),self.session,'owner')
         self.assertNotIn('mcd',self.session.services)
+
+    async def test_luckin_delivery_followup_keeps_user_merchant_and_does_not_query_pickup(self):
+        self.agent._run=AsyncMock(side_effect=AssertionError('no model or merchant lookup needed'))
+        for text in ('给我点一杯瑞幸到e世界楼下','外卖可以吗','那外送呢'):
+            result=await self.agent.chat('owner',text)
+            self.assertIn('不能帮您点瑞幸外送',result['text'])
+            self.assertNotIn('麦当劳',result['text'])
+            self.assertNotIn('附近是什么地标',result['text'])
+            self.assertFalse(result['events'])
+        self.agent._run.assert_not_awaited()
+
+    def test_delivery_reference_does_not_inherit_across_new_topic_or_merchant(self):
+        from app.task_switching import luckin_delivery_boundary
+        history=[{'role':'user','text':'点瑞幸'},{'role':'assistant','text':'可以点麦当劳'}]
+        self.assertIsNotNone(luckin_delivery_boundary('外卖可以吗',history))
+        self.assertIsNone(luckin_delivery_boundary('麦当劳可以外卖吗',history))
+        self.assertIsNone(luckin_delivery_boundary('那我自己到店自取',history))
+        self.assertIsNone(luckin_delivery_boundary('外卖可以吗',history+[{'role':'user','text':'今天北京天气'}]))

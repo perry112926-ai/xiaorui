@@ -45,3 +45,34 @@ def release_completed_drafts(agent,session,owner):
         if plan['status']=='created':
             session.services.pop(provider,None)
             if provider=='mcd':session.stores.clear();session.meals.clear()
+
+
+# Fulfillment-only follow-ups inherit the last user-selected merchant, never a
+# merchant mentioned by the assistant or a saved cart from another task.
+_FULFILLMENT_FOLLOWUP = re.compile(
+    r'(?:(?:那|那就|请问|改成|改为|换成|我想|可以|能不能|能|支持)\s*)*'
+    r'(?:外卖|外送|配送|送餐|送过来|送上门|送到家)'
+    r'(?:可以吗|行吗|可以么|行不行|吗|呢|可以不|能不能|可不可以)?[。！？!?\s]*'
+)
+_MERCHANT = re.compile(r'瑞幸|麦当劳|肯德基|星巴克|美团|饿了么')
+_DELIVERY = re.compile(r'外卖|外送|配送|送到|送来|送过来|送上门|送我|到[^，。！？!?]{1,60}(?:楼下|门口|家里|前台)')
+
+
+def luckin_delivery_boundary(text, history):
+    if re.search(r'不(?:要|用|想)?(?:外送|外卖|配送)|自取还是',text):
+        return None
+    merchants=set(_MERCHANT.findall(text))
+    if merchants:
+        matches=merchants=={'瑞幸'} and bool(_DELIVERY.search(text))
+    else:
+        matches=False
+        if _FULFILLMENT_FOLLOWUP.fullmatch(text.strip()):
+            for message in reversed(history):
+                if message.get('role')!='user':continue
+                previous=message.get('text','').strip()
+                if _FULFILLMENT_FOLLOWUP.fullmatch(previous):continue
+                matches=set(_MERCHANT.findall(previous))=={'瑞幸'}
+                break
+    if matches:
+        return '小瑞目前只支持瑞幸到店自取，不能帮您点瑞幸外送。想送到您说的地点，可以在瑞幸官方 App 或小程序里查看是否能配送。'
+    return None

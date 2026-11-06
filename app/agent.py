@@ -42,7 +42,7 @@ from app.speech import SpeechComposer, context as speech_context, fallback as sp
 
 from app.model_views import project_result, project_services, project_plans
 from app.factual_replies import business_turn, business_reply
-from app.task_switching import reminder_request, clear_drafts, cancel_mcd_order, release_completed_drafts
+from app.task_switching import reminder_request, clear_drafts, cancel_mcd_order, release_completed_drafts, luckin_delivery_boundary
 
 # Compatibility name for callers that previously used the blacklist sanitizer.
 model_safe = project_result
@@ -594,6 +594,9 @@ class AgentService:
                             except ActionError as exc:
                                 answer = exc.message
                         trace.append({'type':'host.confirmation'})
+                    elif (answer:=luckin_delivery_boundary(text,session.display)) is not None:
+                        self.actions.invalidate_pending(owner)
+                        trace.append({'type':'host.luckin_delivery_boundary'})
                     elif reminder_request(text):
                         self.actions.invalidate_pending(owner)
                         answer='目前还不能到时主动提醒您。可以在手机上设置计时器；您也可以直接说其他需求。'
