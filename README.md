@@ -36,5 +36,6 @@
 
 ## 项目文档
 
+- [设计说明](DESIGN.md)
 - [使用与配置](docs/README.md) · [电话](docs/phone-interaction.md) · [记忆与资料](docs/memory.md)
 - [系统架构](ARCHITECTURE.md) · [开发说明](CONTRIBUTING.md) · [验证与复现](docs/acceptance.md)

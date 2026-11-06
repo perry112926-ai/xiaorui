@@ -11,5 +11,6 @@
 
 ## 开发与验证
 
+- [设计说明](../DESIGN.md)
 - [系统架构](../ARCHITECTURE.md) · [开发地图](development.md) · [开发说明](../CONTRIBUTING.md)
 - [验证与复现](acceptance.md) · [版本记录](../CHANGELOG.md)
