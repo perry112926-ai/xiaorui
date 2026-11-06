@@ -73,6 +73,8 @@ def luckin_delivery_boundary(text, history):
                 if _FULFILLMENT_FOLLOWUP.fullmatch(previous):continue
                 matches=set(_MERCHANT.findall(previous))=={'瑞幸'}
                 break
+    if matches and _FULFILLMENT_FOLLOWUP.fullmatch(text.strip()):
+        return '您问的是刚才那杯瑞幸。小瑞不能帮您点瑞幸外送，送到您说的位置能不能配送，要在瑞幸 App 或小程序里查。'
     if matches:
         return '小瑞目前只支持瑞幸到店自取，不能帮您点瑞幸外送。想送到您说的地点，可以在瑞幸官方 App 或小程序里查看是否能配送。'
     return None

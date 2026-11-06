@@ -394,6 +394,12 @@ class AgentService:
                         'read_only':read_only.READ_ONLY,'execution_enabled':{p:self.actions.enabled(p) and not read_only.READ_ONLY for p in ('mcd','didi','luckin')},
                         'dining_provider':'mcd','payment_tool':False,'scheduled_notifications':False}),
                     data_context('capability_policy', {'read_only': read_only.READ_ONLY, 'message': read_only.MESSAGE if read_only.READ_ONLY else '依实际工具能力执行'}),
+                    data_context('recent_displayed_dialogue', [
+                        {'role': message['role'], 'text': re.sub(
+                            r'https?://[^\s]+|\d{6,}', '[已隐藏]', message['text'][:600])}
+                        for message in session.display[-8:]
+                        if message.get('role') in {'user', 'assistant'} and isinstance(message.get('text'), str)
+                    ]),
                     data_context('canonical_profile', self.store.model_profile()),
                     data_context('companion_memory', self.memory.recall(owner, session.forget_epoch, text)),
                     data_context('service_candidates', project_services(candidate_context(session.services))),
@@ -453,7 +459,10 @@ class AgentService:
             raise AgentError('小瑞暂时没有生成回复，请重试。')
         if grounded_business or session.tool_facts:
             answer=business_reply(text, session.services, session.tool_facts, events, self.store.model_profile())
-            notify({'type':'progress','stage':'facts','text':'已核对真实结果，正在显示'})
+            session.speech_turn = {'text': answer, 'source': 'grounded', 'stage': 'business'}
+            session.defer_speech = False
+            if session.tool_facts:
+                notify({'type':'progress','stage':'facts','text':'已核对真实结果，正在显示'})
             if grounded_business:
                 trace.append({'type':'timing','stage':'first_text','elapsed_ms':round((time.monotonic()-started)*1000)})
             trace.append({'type':'timing','stage':'speech_composition','elapsed_ms':0})
@@ -482,7 +491,7 @@ class AgentService:
         ready=[e for e in events if e.get('type')=='service_choices' and any(c.get('recommendation_id') for c in e.get('choices',[]))]
         if ready:
             events=[e for e in events if e.get('type')!='service_choices' or e is ready[-1]]
-        if (session.model_used and business_turn(text, session.services)) or session.tool_facts or any(e.get('type') in {'plan','action_plan'} for e in events):
+        if any(e.get('type') in {'plan','action_plan'} for e in events):
             answer = business_reply(text, session.services, session.tool_facts, events, self.store.model_profile())
             session.speech_turn = {'text':answer,'source':'grounded','stage':'transaction' if any(e.get('type') in {'plan','action_plan'} for e in events) else 'business'}
             session.defer_speech = False
