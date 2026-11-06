@@ -21,7 +21,7 @@ fi
 if [ ! -f .env ]; then
   cp .env.example .env
   chmod 600 .env
-  echo "已创建 .env。可先打开页面；查询前请填写麦当劳 Token。"
+  echo "已创建 .env。页面打开后，请在家人设置中配置模型及所需服务。"
 fi
 
 echo "检查 Python 及依赖（首次需要联网）…"
@@ -37,8 +37,41 @@ if [ ! -f frontend/dist/index.html ]; then
   npm --prefix frontend run build
 fi
 
-echo "打开 http://127.0.0.1:8000 。关闭此窗口或按 Control+C 停止服务。"
-if [ "${PERSONAL_AGENT_NO_BROWSER:-0}" != 1 ]; then
-  (sleep 2; /usr/bin/open http://127.0.0.1:8000) &
+if ! "$uv_command" run --no-sync python -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 8000)); s.close()'; then
+  echo "8000 端口已被占用。若小瑞已经运行，请直接打开 http://127.0.0.1:8000；否则先关闭占用端口的程序。"
+  exit 1
 fi
-exec "$uv_command" run --no-sync uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+echo "正在启动小瑞，页面就绪后会自动打开…"
+"$uv_command" run --no-sync uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+server_pid=$!
+cleanup() {
+  kill "$server_pid" 2>/dev/null || true
+  wait "$server_pid" 2>/dev/null || true
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+ready=false
+for ((attempt=0; attempt<120; attempt++)); do
+  if ! kill -0 "$server_pid" 2>/dev/null; then
+    echo "小瑞启动失败，请查看上方错误信息。"
+    wait "$server_pid" || exit $?
+    exit 1
+  fi
+  if curl --noproxy '*' --silent --fail --max-time 1 http://127.0.0.1:8000/api/health >/dev/null; then
+    ready=true
+    break
+  fi
+  sleep 0.5
+done
+if [ "$ready" != true ]; then
+  echo "服务启动等待超时，请查看上方错误信息后重新启动。"
+  exit 1
+fi
+echo "小瑞已就绪：http://127.0.0.1:8000 。保持此窗口打开，按 Control+C 停止服务。"
+if [ "${PERSONAL_AGENT_NO_BROWSER:-0}" != 1 ]; then
+  /usr/bin/open http://127.0.0.1:8000 || echo "请在浏览器手动打开上方地址。"
+fi
+wait "$server_pid"
