@@ -1,6 +1,6 @@
 # 飞猪 AI 机票接入
 
-小瑞可调用 `fliggy_search_flights` 查询实时航班，比较搜索报价，并给出官方预订链接。用户需在飞猪核对乘机人、总价、税费、行李和退改规则后付款。本接入不自动创建订单、支付或出票，也不能核验链接打开后的订单状态。
+小瑞可调用 `fliggy_search_flights` 查询实时航班，比较搜索报价，并给出官方预订链接。用户需在飞猪核对乘机人、总价、税费、行李和退改规则后付款。预订、结算和出票在飞猪完成。
 
 ## 配置
 
@@ -21,7 +21,5 @@
 ```sh
 .venv/bin/python -m unittest tests.test_fliggy tests.test_fliggy_setup tests.test_settings
 ```
-
-2026-11-06：使用用户提供的凭据，通过官方 CLI 和小瑞适配器验证北京至上海示例航班搜索；返回航班、报价与 `router.feizhu.com` 预订链接。直接请求 MCP 返回 401，官方签名 CLI 请求成功。未创建订单、付款或出票；预订链接后的结算流程未验收。
 
 官方资料：[开放能力](https://flyai.open.fliggy.com/docs)、[FlyAI 官方仓库](https://github.com/alibaba-flyai/flyai-skill)。

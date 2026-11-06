@@ -1,6 +1,6 @@
 # 系统架构：模型负责提案，宿主负责状态与执行
 
-> 基于本地实现 `96aab84`（2026-11-06）核对。本文描述现存实现；未来能力在[路线图](docs/roadmap.md)中单列。部署见[setup](docs/setup.md)，资料与召回详解见[memory](docs/memory.md)。
+> 部署见[部署与配置](docs/setup.md)，资料与召回见[个人资料与记忆](docs/memory.md)。
 
 ## 1. 运行单元与设计选择
 
@@ -108,7 +108,6 @@ stateDiagram-v2
 | `personal-agent/actions.sqlite3` | 三平台方案、确认和执行结果 | 所有权／版本保护；未知不重放 |
 | `plans.sqlite3` | 旧麦当劳自取方案 | 经兼容层迁入统一台账，保留历史归属与未知状态 |
 | `personal-agent/images/` | 已发送图片及本机元数据 | owner检查、格式／大小约束；可能发送云端模型 |
-| `personal-agent/scheduler/` | Cron jobs与运行回执 | 尚无用户提醒与通知投递 |
 
 短期浏览器定位在内存中按owner保存，有效期120秒；不自动写成家。TTS一次性票据在内存中，45秒失效，重启不恢复。昵称头像为当前浏览器localStorage外观设置，不是正式身份或权威个人资料。
 
@@ -143,7 +142,7 @@ ASR每包200ms音频，partial只展示、final才提交。单条录音有时长
 
 TTS不再等完整blob才播放；旧完整音频POST接口为兼容保留。停止会中断旧播放和下载，generation用于隔离迟到结果。**边接收音频边播放不等于边生成模型文本边发声**；语音等待可播报文本，普通文字回复可以先发出。当前没有可靠的“用户已完整听到”业务回执。
 
-主要待验收点：普通短句900／1200ms判停可能抢老人思考；电话播放失败后的恢复；扬声器回声、真实手机后台和弱网均需实测。Pipecat 已完成独立合成语音和 WebRTC 验证，正式入口仍使用当前链路。证据见[验收清单](docs/acceptance.md)。语音路线见[phone-interaction](docs/phone-interaction.md)，排期见[roadmap](docs/roadmap.md)。
+语音复现见[验证与复现](docs/acceptance.md)。
 
 ## 6. 完整开发目录与模块职责
 
@@ -162,7 +161,7 @@ xiaorui/
 ├── skills/                 # 宿主复制的领域说明，权限仍由代码控制
 ├── tests/                  # Python离线边界与回归测试
 ├── experiments/            # 人工按范围运行的真实联调探针
-├── docs/                   # 部署、记忆、服务、设计与路线图
+├── docs/                   # 部署、记忆、服务与验证
 │   ├── acceptance/         # 带版本和范围的验收证据
 │   └── research/           # 历史研究快照，不是运行时依赖
 └── .local-data/            # 私人运行数据，忽略且不分发
@@ -183,7 +182,7 @@ xiaorui/
 | 媒体 | `voice.py`、`voice_protocol.py`、`speech.py`：ASR／TTS／播报；`attachments.py`：图片处理与归属 |
 | 网页 | `main.tsx`：消息与SSE；`useVoice.ts`：收音与播放；`CallBar.tsx`：通话条；`ActionCard.tsx`：确认；`ProfileCard.tsx`：资料；`SettingsDialog.tsx`：设置；`Companion.tsx`：角色；`location.ts`：定位；CSS：样式 |
 
-修改路径与对应测试见[开发地图](docs/development.md)。当前应用不含`mobile/` Flutter客户端、Poki或任意MCP注册器；其他分支探索不可作为此版本能力。
+模块与对应测试见[开发地图](docs/development.md)。
 
 ### 运行时与模块边界
 
@@ -201,7 +200,6 @@ xiaorui/
 
 MCP 的结构解码在 `mcp_payload.py` 复用；各 provider 仍分别验证自己的成功封装、拒绝结果和授权工具目录。`has_pending_any` 与 `has_pending_call` 分别表示所有队列和指定通话队列，SQL 的 `IS` 明确保留 NULL 安全比较语义。
 
-本轮能力矩阵、LongMemEval／LoCoMo 前后评测与缺口见[能力检查报告](docs/evaluations/personal-agent-2026-11-06/audit.md)。
 
 ### 飞猪机票查询与外部预订
 
@@ -231,4 +229,4 @@ HTTP与WebSocket分别检查回环Host和精确Origin；JSON写请求、参数sc
 
 日志与备份可能含个人内容。停止服务后备份数据库和所需私有文件，勿提交`.env`、`.local-data/`、真实订单、配对资料或支付链接。无数据库加密或全面删除API的保证。外部服务的数据处理规则独立适用。
 
-验证分四层：离线程序测试 → 真实只读接口 → 明确授权的具体写操作 → 目标设备／老人完整流程。上一层通过不自动证明下一层。飞猪家人设置验收记录为 372 项后端、94 项前端及构建；真人语音和完整生活服务仍未全面验收。详见[acceptance](docs/acceptance.md)。
+验证命令与已记录的服务样本见[验证与复现](docs/acceptance.md)。

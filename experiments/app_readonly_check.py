@@ -31,7 +31,8 @@ async def main():
               'test_location': '上海人民广场（非用户位置）',
               'stores': len(stores), 'products': len(products),
               'amount_cents': prepared['amount_cents'], 'summary': prepared['summary']}
-    path = ROOT / 'docs/research/2026-11-04/mcd-probe/app-adapter-check.json'
+    path = ROOT / '.local-data/probes/mcd-probe/app-adapter-check.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     print(json.dumps(report, ensure_ascii=False, indent=2))
 

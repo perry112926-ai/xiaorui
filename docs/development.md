@@ -20,7 +20,7 @@
 | 交易确认与未知结果 | `actions.py`、旧`plans.py`、`main.py` | `test_actions.py`、`test_actions_api.py`、`test_confirmation.py` |
 | 凭据与网络边界 | `settings.py`、`main.py`、`service_transport.py` | `test_settings.py`、`test_read_only.py`、`test_service_transport.py` |
 | 图片 | `attachments.py`、`main.tsx` | `test_attachments.py` |
-| Cron基础生命周期 | `foundation_scheduler.py` | `test_foundation_scheduler.py`；用户提醒尚未开放 |
+| Cron基础生命周期 | `foundation_scheduler.py` | `test_foundation_scheduler.py` |
 
 上表测试名称以`tests/`和`frontend/tests/`为准，升级依赖或重构时同步维护。前端测试使用Node与TypeScript转译执行交互逻辑，不是完整浏览器／真机覆盖。
 

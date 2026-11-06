@@ -10,14 +10,4 @@
 
 官方资料：[地点搜索](https://lbs.amap.com/api/webservice/guide/api/search)、[地理编码](https://lbs.amap.com/api/webservice/guide/api/georegeo)、[路线规划](https://lbs.amap.com/api/webservice/guide/api/newroute)、[天气](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)。
 
-离线测试使用注入的 HTTP／服务响应，仅验证端点、凭据保护、真实候选的参数传递、失败清空候选、单位和报告时间保留，不代替官方真实联调。
-
-## 真实联调（2026-11-05）
-
-Key 已写入忽略的本地 `.env`，文件权限 0600，不进入 Git。官方只读验收通过：北京西站搜索返回 5 个候选，中国国家博物馆地理编码返回 1 个候选，候选之间驾车路线及北京市天气均返回真实结果。另对公开北京坐标验证步行和驾车均有距离、秒单位耗时及道路指引；结果是当次快照。
-
-隔离工作区中的真实豆包 Agent 对话通过 `amap_weather` 查询北京市天气，并在回复中包含高德报告时间。工具轨迹为 run.started → amap_weather → tool.completed → run.completed；订单数为零。6 项高德专项测试通过。未使用私人位置、未创建订单，未验证持续实时导航或真人语音导航。
-
-## 老人场景测试
-
-2026-11-05 增加真实模型多轮场景、13项真实只读接口合同检查，以及故障边界单元测试，覆盖出行、天气、找医院／药店／公厕／公园和不支持能力。过程、发现的问题与复测见[老人高德场景验收](acceptance/amap-elderly-scenarios.md)。授权定位流用公开北京坐标模拟输入并查询真实高德接口，不代表 Mac 实际 GPS 或老人户外使用已验收。
+验证覆盖公开地标搜索、地理编码、路线和天气。样本使用北京西站等公开地点。[验证记录](acceptance/amap-elderly-2026-11-05.json)

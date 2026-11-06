@@ -20,7 +20,7 @@ from nanobot.session.manager import SessionManager
 ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = ROOT / '.research/nanobot/probe-workspace'
 SESSION_ROOT = ROOT / '.research/nanobot/probe-sessions'
-RESULTS = ROOT / 'docs/research/2026-11-04/nanobot-probe'
+RESULTS = ROOT / '.local-data/probes/nanobot-probe'
 MEMORY = '集成验证资料：长期偏好测试条目。不是用户真实资料。'
 MESSAGE = '集成验证历史：测试会话持久化。'
 

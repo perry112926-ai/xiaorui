@@ -17,7 +17,7 @@
 
 ## 忘记如何生效
 
-明确的主题遗忘删除匹配的偏好和证据片段，推进后续会话的召回边界，并隔离旧任务召回。未涉及的偏好可迁移到新代际。资料、页面历史、运行时档案、云端处理记录和备份各有自己的保留范围。主题匹配仍有局限，持久删除墓碑也仍待实现。
+明确的主题遗忘删除匹配的偏好和证据片段，推进后续会话的召回边界，并隔离旧任务召回。未涉及的偏好可迁移到新代际。资料、页面历史、运行时档案、云端处理记录和备份各有自己的保留范围。主题遗忘按匹配的证据范围执行。
 
 ## 实用性与验收
 
@@ -36,4 +36,4 @@ uv run --no-sync python -m unittest discover -s tests -p 'test_*memory*.py' -v
 - [companion_memory.py](../app/companion_memory.py) 保存原话与偏好，执行检索和主题遗忘。
 - [agent.py](../app/agent.py) 注入资料和召回证据，管理会话与任务屏障。
 - [foundation_store.py](../app/foundation_store.py) 保存结构化资料、会话快照与任务。
-- [评估协议](evaluations/personal-agent-2026-11-06/audit.md) 记录真实模型探针与公开数据集复现范围。
+- [评估结果](evaluations/personal-agent-2026-11-06/results.md) 记录真实模型探针与公开数据集复现范围。

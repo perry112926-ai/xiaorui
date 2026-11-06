@@ -19,7 +19,7 @@ from mcd_payload import business_payloads
 ROOT = Path(__file__).resolve().parents[1]
 ENDPOINT = 'https://mcp.mcd.cn'
 LOCAL = ROOT / '.research/mcd'
-REPORTS = ROOT / 'docs/research/2026-11-04/mcd-probe'
+REPORTS = ROOT / '.local-data/probes/mcd-probe'
 
 # Explicit application policy, not server readOnlyHint-based authorization.
 # New tools require review; unknown tools are never executable here.

@@ -40,7 +40,8 @@ def main():
         report.update(ok=False, error_type=type(exc).__name__,
                       message=str(exc).replace(key, '[REDACTED]'))
     report['elapsed_seconds'] = round(time.monotonic() - started, 2)
-    destination = ROOT / 'docs/research/2026-11-04/nanobot-probe/ark-responses.json'
+    destination = ROOT / '.local-data/probes/nanobot-probe/ark-responses.json'
+    destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0 if report['ok'] else 1

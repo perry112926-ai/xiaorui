@@ -17,7 +17,7 @@ from nanobot.config.home import set_home_path
 ROOT = Path(__file__).resolve().parents[1]
 INSTANCE = ROOT / '.research/nanobot/live-instance'
 WORKSPACE = INSTANCE / 'workspace'
-RESULTS = ROOT / 'docs/research/2026-11-04/nanobot-probe'
+RESULTS = ROOT / '.local-data/probes/nanobot-probe'
 
 
 class PreferenceTool(Tool):
