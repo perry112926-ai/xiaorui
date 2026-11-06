@@ -14,12 +14,12 @@ from app.policies import CHAT_POLICY, MCD_POLICY, WEATHER_POLICY
 
 def tool_scope(text, services, names):
     """Narrow only explicit single-domain requests; ambiguous turns retain tools."""
-    other = r'餐|外卖|麦当劳|咖啡|瑞幸|车|订单|付款|支付|记住|忘记|资料|提醒|路线|附近|医院|药店'
+    other = r'餐|外卖|麦当劳|咖啡|瑞幸|车|订单|付款|支付|记住|忘记|资料|提醒|路线|附近|医院|药店|机票|航班|飞猪'
     if re.search('天气|下雨|下雪|气温', text) and not re.search(other, text):
         return {'amap_weather'} & set(names)
-    if '购物车' in text and not re.search(r'地址|换店|天气|路线|车程|记住|忘记|瑞幸|咖啡|打车|叫车|滴滴|附近|资料|提醒|联系', text):
+    if '购物车' in text and not re.search(r'地址|换店|天气|路线|车程|记住|忘记|瑞幸|咖啡|打车|叫车|滴滴|附近|资料|提醒|联系|机票|航班|飞猪', text):
         return {'mcd_update_cart','mcd_cart','mcd_prepare_cart','mcd_product_detail'} & set(names)
-    if re.search('麦当劳|购物车|套餐|点餐|外卖', text) and not re.search(r'天气|路线|打车|叫车|滴滴|瑞幸|咖啡|记住|忘记|提醒|联系', text):
+    if re.search('麦当劳|购物车|套餐|点餐|外卖', text) and not re.search(r'天气|路线|怎么走|怎么去|导航|打车|叫车|滴滴|瑞幸|咖啡|记住|忘记|提醒|联系|机票|航班|飞猪', text):
         return {n for n in names if n.startswith('mcd_') or n == 'personal_profile'}
     return set(names)
 

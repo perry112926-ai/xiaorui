@@ -637,7 +637,11 @@ class AgentService:
                         self.actions.invalidate_pending(owner)
                         answer='目前还不能到时主动提醒您。可以在手机上设置计时器；您也可以直接说其他需求。'
                         trace.append({'type':'host.reminder_boundary'})
-                    elif phrase in {'取消订单','取消麦当劳订单','帮我取消订单','不想付钱了','不付了'} and not read_only.READ_ONLY and (answer:=await cancel_mcd_order(self,session,owner,events)) is not None:
+                    elif (phrase in {'取消订单','取消麦当劳订单','帮我取消订单','不想付钱了','不付了'}
+                          and not read_only.READ_ONLY
+                          and (cancel_domain := turn_domain(text, session.display)) in {None, 'mcd'}
+                          and (answer := await cancel_mcd_order(
+                              self, session, owner, events, explicit=cancel_domain == 'mcd')) is not None):
                         trace.append({'type':'host.cancel_order_query'})
                     elif (not read_only.READ_ONLY and turn_domain(text,session.display) in {None,'mcd'}
                             and (recommendation_id:=resolve_selection(session,text))):

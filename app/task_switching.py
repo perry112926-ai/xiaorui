@@ -13,8 +13,12 @@ def clear_drafts(session):
     session.meals.clear()
 
 
-async def cancel_mcd_order(agent,session,owner,events):
+async def cancel_mcd_order(agent,session,owner,events,*,explicit=False):
     orders=[p for p in agent.actions.list(owner) if p['action']=='create' and (p.get('order') or {}).get('order_id')]
+    if explicit:
+        orders = [order for order in orders if order['provider'] == 'mcd']
+    elif len({order['provider'] for order in orders}) > 1:
+        return '您想取消哪家的订单？请告诉我商家或服务名称。'
     if orders and orders[0]['provider']!='mcd':
         return None
     if orders:
@@ -24,16 +28,16 @@ async def cancel_mcd_order(agent,session,owner,events):
         order=result.get('order',{})
         status=next((str(order[k]) for k in ('orderStatusName','statusName','orderStatus','status') if order.get(k) and not str(order[k]).isdigit()),'')
         if re.search('已取消|已关闭|已退款|已完成',status):
-            agent.actions.invalidate_pending(owner,status='cancelled')
-            clear_drafts(session)
-            return f'麦当劳官方显示这笔订单“{status}”，不需要再取消。已退出这次点餐，您可以直接说新的需求。'
+            return f'麦当劳官方显示这笔订单“{status}”，不需要再取消。您可以直接说新的需求。'
         result=await agent.scenarios['mcd'].dispatch(session,owner,'mcd_prepare_cancel',{'plan_id':plan['id']},events)
         if result.get('plan'):return agent.proposal_text(result['plan'])
         return f'官方当前状态：{status or "暂未明确"}。'+result.get('error','暂时无法核实取消条件，请到麦当劳官方订单页处理。')+' 您可以直接说新的需求，不必继续付款。'
     pending=agent.actions.pending(owner)
     if pending and pending['provider']=='mcd' and pending['action']=='create':
         events.append({'type':'action_plan','plan':agent.actions.cancel_local(owner,pending['id'])})
-    clear_drafts(session)
+    session.services.pop('mcd', None)
+    session.stores.clear()
+    session.meals.clear()
     return '本次没有可核实的真实麦当劳订单。已放弃本地待确认方案和购物车，您可以直接说新的需求。'
 
 
@@ -66,10 +70,12 @@ def turn_domain(text, history):
         matches = set()
         for domain, pattern in (
             ('luckin', '瑞幸'), ('mcd', '麦当劳|麦乐送|购物车'),
-            ('didi', '滴滴|打车|叫车'), ('amap', '路线|导航|怎么走|怎么去|天气|下雨|公厕|厕所|药店'),
+            ('didi', '滴滴|打车|叫车'), ('fliggy', '飞猪|机票|航班'), ('amap', '路线|导航|怎么走|怎么去|天气|下雨|公厕|厕所|药店'),
         ):
             if re.search(pattern, value):
                 matches.add(domain)
+        if matches <= {'amap', 'luckin', 'mcd'} and 'amap' in matches and re.search(r'怎么走|怎么去|导航|路线',value) and not re.search(r'点餐|下单|外卖|取餐|订单|然后|顺便|同时|再帮',value):
+            return 'amap'
         return next(iter(matches)) if len(matches) == 1 else None
 
     domain = explicit(text)
@@ -80,7 +86,7 @@ def turn_domain(text, history):
             and last.get('text','').endswith('您愿意改成自取吗？')
             and re.fullmatch(r'(?:可以|好|对|行|愿意)[。！？!?\s]*',text.strip())):
         return 'luckin'
-    followup = re.compile(r'(?:查一下|查查|继续(?:吧|呀)?|可以|对|好的?|就这个|就这份|第?[一二三四五12345](?:个|份)?|选[一二三四五12345]|不要冰的|热的|我已授权本次定位，请继续当前任务并核对实际地址；先不要提交交易)[。！？!?\s]*')
+    followup = re.compile(r'(?:查一下|查查|继续(?:吧|呀)?|可以|对|好的?|就这个|就这份|第?[一二三四五12345](?:个|份)?|选[一二三四五12345]|不要冰的|热的|(?:改成|改为|那就)?(?:到店)?自取(?:吧|呢)?|取消订单|帮我取消订单|不想付钱了|不付了|我已授权本次定位，请继续当前任务并核对实际地址；先不要提交交易)[。！？!?\s]*')
     if not followup.fullmatch(text.strip()):
         if (last.get('role')=='assistant'
                 and last.get('text','').startswith('这次想在哪家瑞幸取餐')

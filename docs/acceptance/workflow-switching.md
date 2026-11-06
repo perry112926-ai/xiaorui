@@ -16,3 +16,5 @@
 .venv/bin/python -m unittest discover -s tests -q
 .venv/bin/python -m experiments.workflow_switch_acceptance
 ```
+
+跨场景回归覆盖瑞幸外送转自取、飞猪机票续问、瑞幸和麦当劳作为导航目的地、叫车和咖啡订单取消指代、两家订单的取消澄清、天气续问及旧套餐序号。混合机票和点餐请求保留两类工具。隔离 HTTP 实测连续七轮，覆盖瑞幸外送和品牌追问、提醒边界、故事、天气，以及从公开地标去瑞幸的路线澄清。
